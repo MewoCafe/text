@@ -1,0 +1,73 @@
+MIT 许可证（附加条款） / MIT License with Additional Terms
+
+Copyright (c) 2026 小狗咖啡猫
+
+注意：本许可证在标准 MIT 许可证的基础上增加了附加条款，因此不是标准的 MIT 许可证。
+使用、复制、修改或分发本软件，即表示你同意遵守下面的全部条款。
+
+Note: This license adds additional terms to the standard MIT License and is
+therefore NOT the standard MIT License. By using, copying, modifying or
+distributing this software you agree to all of the terms below.
+
+--------------------------------------------------------------------------------
+第一部分：MIT 许可证原文 / Part 1: MIT License
+--------------------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+第二部分：附加条款 / Part 2: Additional Terms
+--------------------------------------------------------------------------------
+
+以下附加条款与第一部分同时适用；两者冲突时，以附加条款为准。
+
+1. 保留署名
+   任何副本或衍生作品（包括 fork、转载、二次修改后发布的版本），都必须在页面上
+   和源代码中保留原作者署名“小狗咖啡猫”，不得删除、修改或替换。
+
+2. 不得更改网站名称
+   任何副本或衍生作品都必须保留网站名称“恋爱观察室”，不得删除、修改或替换。
+
+3. 必须清除原作者的网站链接
+   将本软件部署到你自己的网站或服务时，必须删除其中指向原作者网站或服务的全部
+   链接和地址（包括但不限于源代码中 SITE_TARGETS 里的检测线路），并替换为你自己的。
+   不得让你的部署继续检测、推荐或链接到原作者的网站。
+
+违反以上任何一条，本许可证授予你的全部权利自动终止。
+
+The following additional terms apply together with Part 1. Where they
+conflict, these additional terms prevail.
+
+1. Attribution. Every copy or derivative work (including forks, reposts and
+   modified versions) must keep the original author credit "小狗咖啡猫" both on
+   the page and in the source code. The credit must not be removed, altered or
+   replaced.
+
+2. Site name. Every copy or derivative work must keep the site name "恋爱观察室".
+   The name must not be removed, altered or replaced.
+
+3. Removal of the author's links. When you deploy the Software on your own site
+   or service, you must remove every link and address pointing to the original
+   author's sites or services (including, without limitation, the probe targets
+   in SITE_TARGETS in the source code) and replace them with your own. Your
+   deployment must not keep probing, recommending or linking to the original
+   author's sites.
+
+Any violation of these terms automatically terminates all rights granted to you
+under this license.

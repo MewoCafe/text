@@ -1,12 +1,14 @@
 <!doctype html>
+<!-- 恋爱观察室 · 连接自检 · © 2026 小狗咖啡猫 · MIT 许可证（附加条款），转载请保留署名与网站名 -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f3eee7">
-<title>连接自检</title>
-<meta name="description" content="打开即检测网络、线路、浏览器和设备，找出页面打不开或卡顿的原因。">
+<title>恋爱观察室 · 连接自检</title>
+<meta name="author" content="小狗咖啡猫">
+<meta name="description" content="恋爱观察室的连接自检：打开即检测网络、线路、浏览器和设备，找出页面打不开或卡顿的原因。">
 <style>
 :root{--nd-bg:#f3eee7;--nd-bg-top:#e9ecf3;--nd-card:#fffcf8;--nd-ink:#2e2a26;--nd-muted:#8b8279;--nd-line:#e7dfd5;--nd-chip:rgba(46,42,38,.06);
   --nd-run:#7b86b8;--nd-run-soft:rgba(123,134,184,.15);--nd-ok:#4f9a78;--nd-ok-soft:rgba(79,154,120,.15);--nd-warn:#d39a35;--nd-warn-soft:rgba(211,154,53,.17);--nd-bad:#d4645a;--nd-bad-soft:rgba(212,100,90,.15)}
@@ -78,6 +80,7 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 .nd-primary{flex:1;margin-right:10px;border-color:var(--nd-ink,#2e2a26);background:var(--nd-ink,#2e2a26);color:var(--nd-bg,#f3eee7)}
 .nd-ghost{background:transparent;color:var(--nd-ink,#2e2a26)}
 
+.nd-credit{flex-shrink:0;margin:10px 0 0;text-align:center;font-size:11px;letter-spacing:.5px;color:var(--nd-muted,#8b8279);opacity:.8}
 .nd-sheet{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,18,16,.38)}
 .nd-sheet-panel{width:100%;max-width:460px;max-height:84%;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--nd-bg,#f3eee7);color:var(--nd-ink,#2e2a26)}
 .nd-sheet-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding:14px 18px;border-bottom:1px solid var(--nd-line,#e7dfd5);font-size:15px}
@@ -104,7 +107,7 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 /* 矮屏幕：缩小圆环，保证一屏放得下。 */
 @media (max-height:680px){.nd-ring{width:100px;height:100px;margin-bottom:16px}.nd-ring::before{top:11px;left:11px;right:11px;bottom:11px}.nd-ring-icon{font-size:34px}.nd-headline{font-size:19px}}
 @media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-chips{margin-top:8px}.nd-more{padding:6px 14px}.nd-tile{padding:10px 12px}}
-@media (max-height:560px){.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
+@media (max-height:560px){.nd-credit{margin-top:6px}.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
 
 </style>
 </head>
@@ -477,7 +480,7 @@ var NetDiagnose = (function () {
 
   function formatReport(r) {
     var e = r.env, lines = [];
-    lines.push('【连接自检报告】' + r.time);
+    lines.push('【' + (r.siteName ? r.siteName + ' · ' : '') + '连接自检报告】' + r.time);
     lines.push('页面：' + r.page);
     lines.push('');
     lines.push('—— 结论 ——');
@@ -524,7 +527,7 @@ var NetDiagnose = (function () {
   function run(opts, onStep) {
     opts = opts || {};
     onStep = onStep || function () {};
-    var r = {time: stamp(), page: location.href.replace(/[?#].*$/, '')};
+    var r = {time: stamp(), page: location.href.replace(/[?#].*$/, ''), siteName: opts.siteName || ''};
     onStep('正在读取浏览器信息…');
     r.env = collectEnv();
     r.features = checkFeatures();
@@ -828,6 +831,7 @@ var NetDiagnoseView = (function () {
    * opts.title：顶部小标题；opts.top=false 时不画顶栏（嵌在已有弹窗里）
    * opts.notify(text)：复制后的提示，默认改按钮文字
    * opts.custom：显示“自己输入网址检测”的输入框
+   * opts.credit：底部的一行署名
    * opts.launch：检测完自动弹出能连上的线路，让对方自己选一条打开
    */
   function mount(root, opts) {
@@ -881,6 +885,7 @@ var NetDiagnoseView = (function () {
     bar.appendChild(copy);
     bar.appendChild(again);
     app.appendChild(bar);
+    if (opts.credit) app.appendChild(el('p', 'nd-credit', opts.credit));
 
     var detailSheet = makeSheet(app, '详细结果'), launchSheet = makeSheet(app, '选一条线路打开');
     var sites = [];
@@ -978,6 +983,11 @@ var NetDiagnoseView = (function () {
   'use strict';
   window.__ndStarted = true;
 
+  // 恋爱观察室 · 连接自检
+  // 作者：小狗咖啡猫。使用 MIT 许可证（附加条款），详见 LICENSE：
+  // 转载或 fork 时，必须保留署名“小狗咖啡猫”和网站名“恋爱观察室”，并把下面的线路换成你自己的。
+  var SITE_NAME = '恋爱观察室', AUTHOR = '小狗咖啡猫';
+
   // 在这里填上主界面用到的域名，检测页会重点测它们，比如：
   //   {name: '主站', url: 'https://example.com/favicon.ico', open: 'https://example.com/'}
   // 也可以临时在链接后面加 ?target=网址（可以写多个）。
@@ -1007,10 +1017,11 @@ var NetDiagnoseView = (function () {
   var root = document.getElementById('nd-root');
   root.innerHTML = '';
   NetDiagnoseView.mount(root, {
-    title: '连接自检',
+    title: SITE_NAME + ' · 连接自检',
+    credit: '© 2026 ' + AUTHOR + ' · ' + SITE_NAME + ' · MIT License',
     custom: true,
     launch: true,
-    run: function (onStep) { return NetDiagnose.run({targets: targets()}, onStep); }
+    run: function (onStep) { return NetDiagnose.run({targets: targets(), siteName: SITE_NAME}, onStep); }
   }).start();
 })();
 
