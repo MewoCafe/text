@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3eee7">
+<title>连接自检</title>
+<style>
+:root{--nd-bg:#f3eee7;--nd-bg-top:#e9ecf3;--nd-card:#fffcf8;--nd-ink:#2e2a26;--nd-muted:#8b8279;--nd-line:#e7dfd5;--nd-chip:rgba(46,42,38,.06);
+  --nd-run:#7b86b8;--nd-run-soft:rgba(123,134,184,.15);--nd-ok:#4f9a78;--nd-ok-soft:rgba(79,154,120,.15);--nd-warn:#d39a35;--nd-warn-soft:rgba(211,154,53,.17);--nd-bad:#d4645a;--nd-bad-soft:rgba(212,100,90,.15)}
+@media (prefers-color-scheme:dark){:root{--nd-bg:#161514;--nd-bg-top:#1b1d24;--nd-card:#221f1d;--nd-ink:#efe9e1;--nd-muted:#a2988d;--nd-line:#35312d;--nd-chip:rgba(239,233,225,.08);
+  --nd-run:#9aa4d6;--nd-run-soft:rgba(154,164,214,.16);--nd-ok:#6cc39a;--nd-ok-soft:rgba(108,195,154,.15);--nd-warn:#e8b45a;--nd-warn-soft:rgba(232,180,90,.16);--nd-bad:#ec8378;--nd-bad-soft:rgba(236,131,120,.16)}}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var(--nd-bg) 45%);color:#2e2a26;color:var(--nd-ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+.nd-root{height:100%}
+.nd-fallback{max-width:420px;margin:0 auto;padding:40vh 20px 0;font-size:14px;line-height:1.8;text-align:center;word-break:break-all}
+.nd-fallback code{display:block;margin-top:10px;font-size:12px;opacity:.7}
+/* 检测界面：一屏放下，不滚动。颜色全部走 --nd-* 变量，由外层（独立页 / 主界面）提供。
+ * 只保留一个转圈动画，没有模糊、大阴影这类费性能的效果。 */
+.nd-app{position:relative;box-sizing:border-box;height:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top)) 18px calc(14px + env(safe-area-inset-bottom));color:var(--nd-ink,#2e2a26)}
+.nd-app *{box-sizing:border-box}
+.nd-top{display:flex;align-items:center;justify-content:space-between;height:36px;font-size:13px;color:var(--nd-muted,#8b8279)}
+.nd-brand{font-weight:600;letter-spacing:1px;color:var(--nd-ink,#2e2a26)}
+.nd-brand::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--nd-run,#7b86b8);vertical-align:1px}
+
+.nd-hero{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px 4px}
+.nd-ring{position:relative;flex-shrink:0;width:128px;height:128px;border-radius:50%;margin-bottom:22px;display:flex;align-items:center;justify-content:center;background:var(--nd-run-soft,rgba(123,134,184,.15));color:var(--nd-run,#7b86b8)}
+.nd-ring::before{content:"";position:absolute;top:14px;left:14px;right:14px;bottom:14px;border-radius:50%;background:var(--nd-card,#fffcf8)}
+.nd-ring-icon{position:relative;font-size:42px;font-weight:600;line-height:1}
+.nd-ring.nd-run::after{content:"";position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;border:3px solid transparent;border-top-color:currentColor;animation:nd-spin .9s linear infinite}
+.nd-ring.nd-ok{background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78)}
+.nd-ring.nd-warn{background:var(--nd-warn-soft,rgba(211,154,53,.17));color:var(--nd-warn,#d39a35)}
+.nd-ring.nd-bad{background:var(--nd-bad-soft,rgba(212,100,90,.15));color:var(--nd-bad,#d4645a)}
+@keyframes nd-spin{to{transform:rotate(360deg)}}
+.nd-headline{font-size:21px;font-weight:600;line-height:1.45;margin:0 0 8px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.nd-sub{font-size:13.5px;line-height:1.75;margin:0;max-width:340px;min-height:3.5em;color:var(--nd-muted,#8b8279);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.nd-more{margin-top:12px;border:0;border-radius:20px;padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;color:var(--nd-ink,#2e2a26);background:var(--nd-chip,rgba(46,42,38,.06))}
+
+.nd-tiles{display:flex;flex-wrap:wrap;justify-content:space-between;flex-shrink:0}
+.nd-tile{width:calc(50% - 5px);margin-bottom:10px;padding:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:18px;border:1px solid var(--nd-line,#e7dfd5);background:var(--nd-card,#fffcf8)}
+.nd-tile-head{display:flex;align-items:center;font-size:12px;color:var(--nd-muted,#8b8279)}
+.nd-dot{width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--nd-line,#e7dfd5)}
+.nd-tile b{display:block;margin-top:6px;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-tile.nd-ok .nd-dot{background:var(--nd-ok,#4f9a78)}
+.nd-tile.nd-warn .nd-dot{background:var(--nd-warn,#d39a35)}.nd-tile.nd-warn b{color:var(--nd-warn,#d39a35)}
+.nd-tile.nd-bad .nd-dot{background:var(--nd-bad,#d4645a)}.nd-tile.nd-bad b{color:var(--nd-bad,#d4645a)}
+.nd-tile.nd-idle b{color:var(--nd-muted,#8b8279);font-weight:500}
+
+.nd-bar{display:flex;flex-shrink:0;padding-top:4px}
+.nd-btn{min-height:50px;padding:0 18px;border-radius:16px;font:inherit;font-size:15px;cursor:pointer;border:1px solid var(--nd-line,#e7dfd5)}
+.nd-btn:disabled{opacity:.45;cursor:default}
+.nd-primary{flex:1;margin-right:10px;border-color:var(--nd-ink,#2e2a26);background:var(--nd-ink,#2e2a26);color:var(--nd-bg,#f3eee7)}
+.nd-ghost{background:transparent;color:var(--nd-ink,#2e2a26)}
+
+.nd-sheet{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,18,16,.38)}
+.nd-sheet-panel{width:100%;max-width:460px;max-height:84%;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--nd-bg,#f3eee7);color:var(--nd-ink,#2e2a26)}
+.nd-sheet-head{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding:14px 18px;border-bottom:1px solid var(--nd-line,#e7dfd5);font-size:15px}
+.nd-sheet-close{border:0;background:var(--nd-chip,rgba(46,42,38,.06));color:inherit;font:inherit;font-size:13px;padding:7px 14px;border-radius:16px;cursor:pointer}
+.nd-sheet-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 16px calc(20px + env(safe-area-inset-bottom))}
+
+.nd-card{display:flex;align-items:flex-start;padding:13px 14px;margin-bottom:10px;border-radius:16px;background:var(--nd-card,#fffcf8);border:1px solid var(--nd-line,#e7dfd5)}
+.nd-card b{display:block;font-size:14.5px;font-weight:600;line-height:1.5;word-break:break-word}
+.nd-card p{margin:3px 0 0;font-size:13px;line-height:1.7;color:var(--nd-muted,#8b8279)}
+.nd-card-copy{min-width:0;flex:1}
+.nd-mark{flex-shrink:0;width:22px;height:22px;line-height:22px;margin:1px 11px 0 0;text-align:center;border-radius:50%;font-size:12px;font-weight:700}
+.nd-card.nd-bad .nd-mark{background:var(--nd-bad-soft,rgba(212,100,90,.15));color:var(--nd-bad,#d4645a)}
+.nd-card.nd-warn .nd-mark{background:var(--nd-warn-soft,rgba(211,154,53,.17));color:var(--nd-warn,#d39a35)}
+.nd-card.nd-ok .nd-mark{background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78)}
+.nd-card.nd-info .nd-mark{background:var(--nd-chip,rgba(46,42,38,.06));color:var(--nd-muted,#8b8279)}
+.nd-group{margin-top:10px;border-radius:16px;overflow:hidden;background:var(--nd-card,#fffcf8);border:1px solid var(--nd-line,#e7dfd5)}
+.nd-group summary{cursor:pointer;padding:13px 14px;font-size:14px;font-weight:600}
+.nd-row{display:flex;justify-content:space-between;padding:9px 14px;font-size:13px;border-top:1px solid var(--nd-line,#e7dfd5)}
+.nd-row-label{min-width:0;margin-right:12px;word-break:break-word;color:var(--nd-muted,#8b8279)}
+.nd-row-value{flex-shrink:0;max-width:60%;text-align:right;word-break:break-word}
+.nd-row.nd-ok .nd-row-value{color:var(--nd-ok,#4f9a78)}.nd-row.nd-warn .nd-row-value{color:var(--nd-warn,#d39a35)}.nd-row.nd-bad .nd-row-value{color:var(--nd-bad,#d4645a)}
+.nd-line{margin:0;padding:8px 14px;font-size:12px;line-height:1.6;word-break:break-all;color:var(--nd-muted,#8b8279);border-top:1px solid var(--nd-line,#e7dfd5)}
+
+/* 矮屏幕：缩小圆环，保证一屏放得下。 */
+@media (max-height:680px){.nd-ring{width:100px;height:100px;margin-bottom:16px}.nd-ring::before{top:11px;left:11px;right:11px;bottom:11px}.nd-ring-icon{font-size:34px}.nd-headline{font-size:19px}}
+@media (max-height:560px){.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
+
+</style>
+</head>
+<body>
+<div id="nd-root" class="nd-root">
+  <p id="nd-fallback" class="nd-fallback">正在准备检测…</p>
+  <noscript><p class="nd-fallback">浏览器禁用了 JavaScript，检测无法进行。请开启后刷新页面。</p></noscript>
+</div>
+<script>
+/* 兜底：主检测脚本跑不起来时（浏览器极旧），至少告诉对方原因并给出 UA。 */
+window.__ndFallback = function (why) {
+  var s = document.getElementById('nd-fallback');
+  if (!s) return;
+  s.innerHTML = '';
+  s.appendChild(document.createTextNode('你的浏览器太旧，连检测都无法运行（' + why + '）。这基本就是页面打不开的原因：请升级浏览器，或者换新版 Chrome / Edge / Safari。把下面这行发给我们：'));
+  var ua = document.createElement('code');
+  ua.appendChild(document.createTextNode(navigator.userAgent));
+  s.appendChild(ua);
+};
+window.onerror = function (msg) { if (!window.__ndStarted) window.__ndFallback(String(msg)); };
+if (typeof Promise !== 'function') window.__ndFallback('不支持 Promise');
+</script>
+<script>
+if (typeof Promise === 'function') {
+/* 网络与浏览器诊断核心。
+ * 故意只用 ES5 语法：越是旧浏览器越需要它能跑起来，给出“为什么打不开”的结论。
+ * 依赖 Promise；没有 Promise 的环境由外层页面自己兜底提示。 */
+var NetDiagnose = (function () {
+  'use strict';
+
+  var BASELINES = [
+    {name: '百度', url: 'https://www.baidu.com/favicon.ico', group: 'cn'},
+    {name: '腾讯', url: 'https://www.qq.com/favicon.ico', group: 'cn'},
+    {name: 'GitHub', url: 'https://github.com/favicon.ico', group: 'intl'},
+    {name: 'Cloudflare', url: 'https://www.cloudflare.com/favicon.ico', group: 'intl'}
+  ];
+  var ATTEMPTS = 3, TIMEOUT = 8000, SLOW_MS = 1500;
+
+  function now() {
+    return window.performance && performance.now ? performance.now() : new Date().getTime();
+  }
+  function each(list, fn) { for (var i = 0; i < list.length; i++) fn(list[i], i); }
+  function filter(list, fn) { var out = []; each(list, function (v) { if (fn(v)) out.push(v); }); return out; }
+  function median(nums) {
+    if (!nums.length) return null;
+    var s = nums.slice().sort(function (a, b) { return a - b; });
+    return s[Math.floor(s.length / 2)];
+  }
+  function originOf(url) {
+    var m = /^(https?:\/\/[^\/?#]+)/i.exec(url);
+    return m ? m[1].toLowerCase() : '';
+  }
+  function hostOf(url) { return originOf(url).replace(/^https?:\/\//, ''); }
+  function sameOrigin(url) { return originOf(url) === originOf(location.href); }
+
+  /* ---------- 环境 ---------- */
+
+  var IN_APP = [
+    ['微信内置浏览器', /MicroMessenger\/([\d.]+)/],
+    ['企业微信内置浏览器', /wxwork\/([\d.]+)/],
+    ['QQ 内置浏览器', /\bQQ\/([\d.]+)/],
+    ['微博内置浏览器', /Weibo/],
+    ['钉钉内置浏览器', /DingTalk\/([\d.]+)/],
+    ['支付宝内置浏览器', /AlipayClient\/([\d.]+)/],
+    ['抖音内置浏览器', /aweme|BytedanceWebview/],
+    ['小红书内置浏览器', /xhsdiscover/],
+    ['百度 App 内置浏览器', /baiduboxapp\/([\d.]+)/]
+  ];
+  var BROWSERS = [
+    ['QQ 浏览器', /M?QQBrowser\/([\d.]+)/],
+    ['UC 浏览器', /UCBrowser\/([\d.]+)/],
+    ['夸克', /Quark\/([\d.]+)/],
+    ['华为浏览器', /HuaweiBrowser\/([\d.]+)/],
+    ['小米浏览器', /MiuiBrowser\/([\d.]+)/],
+    ['vivo 浏览器', /VivoBrowser\/([\d.]+)/],
+    ['OPPO 浏览器', /HeyTapBrowser\/([\d.]+)/],
+    ['三星浏览器', /SamsungBrowser\/([\d.]+)/],
+    ['360 浏览器', /QihooBrowser|QHBrowser|360SE|360EE/],
+    ['搜狗浏览器', /SogouMobileBrowser|MetaSr/],
+    ['Edge', /Edg(?:e|A|iOS)?\/([\d.]+)/],
+    ['Opera', /OPR\/([\d.]+)/],
+    ['Firefox', /(?:Firefox|FxiOS)\/([\d.]+)/],
+    ['Chrome', /(?:Chrome|CriOS)\/([\d.]+)/],
+    ['Safari', /Version\/([\d.]+).*Safari/]
+  ];
+
+  function matchFirst(rules, ua) {
+    for (var i = 0; i < rules.length; i++) {
+      var m = rules[i][1].exec(ua);
+      if (m) return {name: rules[i][0], version: m[1] || ''};
+    }
+    return null;
+  }
+
+  function parseOS(ua) {
+    var m;
+    if (/HarmonyOS|OpenHarmony/.test(ua)) return 'HarmonyOS';
+    if ((m = /Android ([\d.]+)/.exec(ua))) return 'Android ' + m[1];
+    if ((m = /(?:iPhone|iPad|iPod).*? OS (\d+)_(\d+)/.exec(ua))) return 'iOS ' + m[1] + '.' + m[2];
+    if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'iPadOS（桌面模式）';
+    if ((m = /Windows NT ([\d.]+)/.exec(ua))) return 'Windows NT ' + m[1];
+    if (/Mac OS X/.test(ua)) return 'macOS';
+    if (/Linux/.test(ua)) return 'Linux';
+    return '未知';
+  }
+
+  function collectEnv() {
+    var ua = navigator.userAgent || '', conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var engine = /(?:Chrome|CriOS)\/(\d+)/.exec(ua), webkit = /AppleWebKit\/([\d.]+)/.exec(ua);
+    var tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    return {
+      ua: ua,
+      os: parseOS(ua),
+      browser: matchFirst(BROWSERS, ua) || {name: '未知', version: ''},
+      inApp: matchFirst(IN_APP, ua),
+      engine: engine ? 'Chromium ' + engine[1] : webkit ? 'WebKit ' + webkit[1] : /Gecko\//.test(ua) ? 'Gecko' : '未知',
+      chromium: engine ? Number(engine[1]) : null,
+      online: navigator.onLine !== false,
+      secure: window.isSecureContext !== false && location.protocol !== 'http:',
+      protocol: location.protocol,
+      language: navigator.language || '',
+      timezone: tz,
+      screen: (screen.width || 0) + '×' + (screen.height || 0) + ' @' + (window.devicePixelRatio || 1) + 'x',
+      viewport: (window.innerWidth || 0) + '×' + (window.innerHeight || 0),
+      cores: navigator.hardwareConcurrency || null,
+      memory: navigator.deviceMemory || null,
+      connection: conn ? {
+        type: conn.type || '',
+        effectiveType: conn.effectiveType || '',
+        rtt: typeof conn.rtt === 'number' ? conn.rtt : null,
+        downlink: typeof conn.downlink === 'number' ? conn.downlink : null,
+        saveData: !!conn.saveData
+      } : null
+    };
+  }
+
+  /* ---------- 浏览器能力：只列主界面真正用到的 ---------- */
+
+  var SYNTAX = [
+    ['箭头函数 / let / const', 'let a = 1; const b = () => a;'],
+    ['async / await', 'async function f() { await 1; }'],
+    ['展开语法 ...', 'var a = [...[1]], b = {...{}};'],
+    ['可选链 ?.', 'var a = {}; a?.b?.c;'],
+    ['for…of 与解构', 'for (const [i, v] of [[0, 1]].entries()) {}']
+  ];
+
+  function cssSupports(a, b) {
+    try { return !!(window.CSS && CSS.supports && (b === undefined ? CSS.supports(a) : CSS.supports(a, b))); } catch (e) { return false; }
+  }
+
+  function checkFeatures() {
+    var out = [], evalBlocked = false;
+    try { new Function('return 1'); } catch (e) { evalBlocked = true; }
+    each(SYNTAX, function (s) {
+      var ok = null;
+      if (!evalBlocked) { try { new Function(s[1]); ok = true; } catch (e) { ok = false; } }
+      out.push({name: s[0], ok: ok, level: 'core', kind: '语法'});
+    });
+    var dialog = typeof HTMLDialogElement === 'function' && 'showModal' in HTMLDialogElement.prototype;
+    out.push({name: 'Promise', ok: typeof Promise === 'function', level: 'core', kind: '接口'});
+    out.push({name: 'fetch', ok: typeof window.fetch === 'function', level: 'core', kind: '接口'});
+    out.push({name: '<dialog> 弹窗', ok: dialog, level: 'core', kind: '接口'});
+    out.push({name: 'Set', ok: typeof Set === 'function', level: 'core', kind: '接口'});
+    out.push({name: 'crypto.randomUUID（保存问卷要用）', ok: !!(window.crypto && typeof crypto.randomUUID === 'function'), level: 'core', kind: '接口',
+      note: window.isSecureContext === false ? '非 HTTPS 页面里这个接口不可用' : ''});
+    out.push({name: 'CSS Grid', ok: cssSupports('display', 'grid'), level: 'core', kind: '样式'});
+    out.push({name: 'CSS 100dvh', ok: cssSupports('height', '100dvh'), level: 'visual', kind: '样式'});
+    out.push({name: 'CSS color-mix()', ok: cssSupports('color', 'color-mix(in srgb, red 50%, blue)'), level: 'visual', kind: '样式'});
+    out.push({name: 'CSS :has()', ok: cssSupports('selector(:has(a))'), level: 'visual', kind: '样式'});
+    return {list: out, evalBlocked: evalBlocked};
+  }
+
+  /* ---------- 存储 ---------- */
+
+  function checkStorage() {
+    var r = {local: false, session: false, cookie: navigator.cookieEnabled !== false, indexedDB: !!window.indexedDB, usedKB: null, error: ''};
+    try {
+      localStorage.setItem('__nd_probe', '1');
+      localStorage.removeItem('__nd_probe');
+      r.local = true;
+      var chars = 0;
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        chars += k.length + (localStorage.getItem(k) || '').length;
+      }
+      r.usedKB = Math.round(chars * 2 / 1024);
+    } catch (e) { r.error = e && e.name ? e.name : String(e); }
+    try { sessionStorage.setItem('__nd_probe', '1'); sessionStorage.removeItem('__nd_probe'); r.session = true; } catch (e) {}
+    return r;
+  }
+
+  /* ---------- 网络探测 ---------- */
+
+  function probeOnce(url, timeout) {
+    var target = url + (url.indexOf('?') < 0 ? '?' : '&') + '_nd=' + new Date().getTime() + Math.random().toString(36).slice(2, 6);
+    return new Promise(function (resolve) {
+      var start = now(), done = false, timer;
+      function finish(ok, detail) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve({ok: ok, ms: Math.round(now() - start), detail: detail});
+      }
+      timer = setTimeout(function () { finish(false, '超时'); }, timeout);
+      if (location.protocol === 'https:' && /^http:/i.test(url)) return finish(false, 'HTTPS 页面不能访问 http 地址');
+      if (sameOrigin(url) && window.XMLHttpRequest) {
+        // 同源能拿到状态码：404 也说明服务器连得上。
+        var xhr = new XMLHttpRequest();
+        xhr.onload = function () { finish(xhr.status > 0, 'HTTP ' + xhr.status); };
+        xhr.onerror = function () { finish(false, '连接失败'); };
+        xhr.open('GET', target, true);
+        xhr.send();
+      } else if (typeof window.fetch === 'function') {
+        // no-cors 只要服务器有响应就会成功，连不上才会失败。
+        fetch(target, {mode: 'no-cors', cache: 'no-store', credentials: 'omit'}).then(
+          function () { finish(true, '有响应'); },
+          function () { finish(false, '连接失败'); });
+      } else {
+        var img = new Image();
+        img.onload = function () { finish(true, '有响应'); };
+        img.onerror = function () { finish(true, '有响应（无法区分错误类型）'); };
+        img.src = target;
+      }
+    });
+  }
+
+  function probe(t) {
+    var results = [];
+    function next() {
+      if (results.length >= ATTEMPTS) {
+        var ok = filter(results, function (r) { return r.ok; });
+        return {name: t.name, url: t.url, group: t.group, attempts: ATTEMPTS, ok: ok.length,
+          ms: median(ok.length ? ok.map(function (r) { return r.ms; }) : []), results: results};
+      }
+      return probeOnce(t.url, TIMEOUT).then(function (r) { results.push(r); return next(); });
+    }
+    return next();
+  }
+
+  /* ---------- 性能：区分“网络卡”和“设备卡” ---------- */
+
+  function measureFrames(duration) {
+    return new Promise(function (resolve) {
+      if (!window.requestAnimationFrame || document.hidden) return resolve(null);
+      var start = null, last = null, frames = 0, worst = 0;
+      function tick(t) {
+        if (start === null) { start = last = t; }
+        else { frames++; worst = Math.max(worst, t - last); last = t; }
+        if (t - start < duration) requestAnimationFrame(tick);
+        else resolve({fps: Math.round(frames * 1000 / (t - start)), worstMs: Math.round(worst)});
+      }
+      requestAnimationFrame(tick);
+      setTimeout(function () { resolve(null); }, duration + 3000);
+    });
+  }
+
+  function cpuBench() {
+    var t = now(), x = 0;
+    for (var i = 0; i < 1000000; i++) x += Math.sqrt(i) * Math.sin(i);
+    return x === -1 ? -1 : Math.round(now() - t);
+  }
+
+  function pageTiming() {
+    var p = window.performance;
+    if (!p) return null;
+    var nav = p.getEntriesByType && p.getEntriesByType('navigation')[0];
+    if (nav) {
+      return {dns: Math.round(nav.domainLookupEnd - nav.domainLookupStart), connect: Math.round(nav.connectEnd - nav.connectStart),
+        ttfb: Math.round(nav.responseStart - nav.requestStart), domReady: Math.round(nav.domContentLoadedEventEnd),
+        load: nav.loadEventEnd ? Math.round(nav.loadEventEnd) : null};
+    }
+    var t = p.timing;
+    if (!t) return null;
+    return {dns: t.domainLookupEnd - t.domainLookupStart, connect: t.connectEnd - t.connectStart, ttfb: t.responseStart - t.requestStart,
+      domReady: t.domContentLoadedEventEnd - t.navigationStart, load: t.loadEventEnd ? t.loadEventEnd - t.navigationStart : null};
+  }
+
+  // 检测自己发出的请求不算页面资源。
+  function notProbe(r) { return r.name.indexOf('_nd=') < 0; }
+
+  function slowResources(limit) {
+    var p = window.performance;
+    if (!p || !p.getEntriesByType) return [];
+    var list = filter(p.getEntriesByType('resource'), notProbe).sort(function (a, b) { return b.duration - a.duration; });
+    return list.slice(0, limit).map(function (r) {
+      var name = r.name.replace(/[?#].*$/, '');
+      if (name.length > 72) name = '…' + name.slice(-70);
+      return {name: name, ms: Math.round(r.duration), kb: r.transferSize ? Math.round(r.transferSize / 1024) : null};
+    });
+  }
+
+  /** 页面实际加载过的资源来自哪些域名：这些都是“打不开”的可能来源。 */
+  function resourceOrigins(limit) {
+    var seen = {}, out = [], p = window.performance;
+    function add(o) { if (o && !seen[o]) { seen[o] = true; out.push(o); } }
+    add(originOf(location.href));
+    if (p && p.getEntriesByType) each(filter(p.getEntriesByType('resource'), notProbe), function (r) { add(originOf(r.name)); });
+    return out.slice(0, limit);
+  }
+
+  /* ---------- 结论 ---------- */
+
+  function verdict(r) {
+    var out = [], env = r.env;
+    function add(level, title, advice) { out.push({level: level, title: title, advice: advice || ''}); }
+    var base = filter(r.probes, function (p) { return p.group !== 'site'; });
+    var cn = filter(base, function (p) { return p.group === 'cn'; });
+    var sites = filter(r.probes, function (p) { return p.group === 'site'; });
+    var internetOk = filter(base, function (p) { return p.ok > 0; }).length > 0;
+    var siteDown = filter(sites, function (p) { return p.ok === 0; });
+    var flaky = filter(r.probes, function (p) { return p.ok > 0 && p.ok < p.attempts; });
+    var cnMs = median(filter(cn, function (p) { return p.ms !== null; }).map(function (p) { return p.ms; }));
+    var slowSites = filter(sites, function (p) { return p.ms !== null && p.ms > SLOW_MS; });
+
+    if (!env.online) add('bad', '设备显示当前处于离线状态', '检查 Wi-Fi 或移动数据是否打开，飞行模式是否关闭。');
+    if (base.length && !internetOk && siteDown.length === sites.length) {
+      add('bad', '网络整体不通', '国内外常用网站都连不上，问题在你这边的网络。换个 Wi-Fi 或切到移动数据，关掉代理 / VPN 再试。');
+    } else if (siteDown.length === sites.length) {
+      add('bad', '能上网，但连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
+        '普通网站正常，唯独连不上我们的服务器。可能是运营商线路、DNS 或拦截问题，也可能是服务器本身。先换个网络试试（Wi-Fi ⇄ 流量），再把这份报告发给我们。');
+    } else if (siteDown.length) {
+      var usable = filter(sites, function (p) { return p.ok > 0; }).sort(function (a, b) { return a.ms - b.ms; });
+      add('warn', '部分线路连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
+        '能用的线路：' + usable.map(function (p) { return p.name + '（' + p.ms + 'ms）'; }).join('、') + '。换用能连上的地址就好，最前面那个最快。');
+    }
+    if (flaky.length) add('warn', '连接不稳定：' + flaky.map(function (p) { return p.name; }).join('、') + ' 有请求失败', '网络时好时坏，页面可能加载一半卡住。离路由器近一点，或换个网络。');
+    if (slowSites.length) {
+      if (cnMs !== null && cnMs > SLOW_MS) add('warn', '你的网络整体偏慢（访问百度等也要 ' + cnMs + 'ms）', '这是本地网络的问题，换个网络或者稍后再试。');
+      else add('warn', '到我们服务器偏慢：' + slowSites.map(function (p) { return p.name + ' ' + p.ms + 'ms'; }).join('、'), '你的网络本身不慢，是到服务器这一段慢。把报告发给我们，方便排查线路。');
+    }
+    if (env.connection && /^(slow-2g|2g|3g)$/.test(env.connection.effectiveType)) add('warn', '浏览器判断当前网络较弱（' + env.connection.effectiveType + '）', '信号不好时页面会加载得很慢。');
+    if (env.connection && env.connection.saveData) add('warn', '开启了省流量模式', '省流量模式可能会延迟或拦截部分资源。');
+
+    var coreMissing = filter(r.features.list, function (f) { return f.level === 'core' && f.ok === false; });
+    var visualMissing = filter(r.features.list, function (f) { return f.level === 'visual' && f.ok === false; });
+    if (coreMissing.length) {
+      add('bad', '浏览器太旧，主界面跑不起来（缺少：' + coreMissing.map(function (f) { return f.name; }).join('、') + '）',
+        env.inApp ? '你在' + env.inApp.name + '里，它的内核偏旧。点右上角“在浏览器中打开”，用系统浏览器或新版 Chrome / Edge / Safari。'
+          : '请把浏览器升级到最新版，或者换用新版 Chrome / Edge / Safari。' + (env.chromium && env.chromium < 100 ? '（当前内核 Chromium ' + env.chromium + '，太旧了）' : ''));
+    } else if (env.inApp) {
+      add('warn', '你正在' + env.inApp.name + '里打开', '内置浏览器经常缓存旧页面或有兼容问题。如果打不开或显示异常，点右上角“在浏览器中打开”。');
+    }
+    if (visualMissing.length) add('warn', '部分样式不支持（' + visualMissing.map(function (f) { return f.name; }).join('、') + '）', '能用，但个别地方的显示可能和别人看到的不一样。升级浏览器可以解决。');
+    if (r.features.evalBlocked) add('info', '页面安全策略不允许检测语法支持', '语法项显示为“未检测”，不影响其他结论。');
+
+    if (!r.storage.local) add('bad', '浏览器禁止了本地存储（' + (r.storage.error || '不可用') + '）', '无痕 / 隐私模式或者拦截设置会导致数据无法保存。请关闭无痕模式，或在设置里允许网站存储数据。');
+    else if (r.storage.usedKB !== null && r.storage.usedKB > 4000) add('warn', '本地存储快满了（约 ' + r.storage.usedKB + 'KB）', '浏览器一般只给 5MB 左右，满了以后新内容会保存失败，读写也会变慢。');
+    if (!env.secure) add('warn', '当前不是 HTTPS 连接', '部分功能（例如保存问卷）在非 HTTPS 页面里不可用。');
+
+    if (r.frames && r.frames.fps < 30) add('warn', '画面掉帧明显（约 ' + r.frames.fps + ' 帧/秒）', '设备现在很吃力，“卡”可能是设备而不是网络：关掉后台应用、退出低电量模式后再试。');
+    if (r.cpuMs !== null && r.cpuMs > 200) add('warn', '设备运算偏慢（基准耗时 ' + r.cpuMs + 'ms）', '旧设备或省电模式下，界面操作会比较慢，这和网络无关。');
+
+    each(r.findings || [], function (f) { out.push(f); });
+    if (!filter(out, function (f) { return f.level === 'bad' || f.level === 'warn'; }).length) {
+      add('ok', '没发现明显问题', '网络和浏览器看起来都正常。如果还是打不开，把报告发给我们，并说明具体卡在哪一步。');
+    }
+    var order = {bad: 0, warn: 1, info: 2, ok: 3};
+    return out.sort(function (a, b) { return order[a.level] - order[b.level]; });
+  }
+
+  /* ---------- 报告 ---------- */
+
+  var LEVEL_TEXT = {bad: '✗', warn: '!', info: 'i', ok: '✓'};
+
+  function fmtProbe(p) {
+    return p.name + ' (' + hostOf(p.url) + ')：' + p.ok + '/' + p.attempts + ' 成功' + (p.ms !== null ? '，' + p.ms + 'ms' : '') +
+      (p.ok < p.attempts ? '，失败原因：' + filter(p.results, function (x) { return !x.ok; }).map(function (x) { return x.detail; }).join('/') : '');
+  }
+
+  function formatReport(r) {
+    var e = r.env, lines = [];
+    lines.push('【连接自检报告】' + r.time);
+    lines.push('页面：' + r.page);
+    lines.push('');
+    lines.push('—— 结论 ——');
+    each(r.verdict, function (v) { lines.push('[' + LEVEL_TEXT[v.level] + '] ' + v.title); });
+    lines.push('');
+    lines.push('—— 环境 ——');
+    lines.push('系统：' + e.os + '｜浏览器：' + e.browser.name + ' ' + e.browser.version + '｜内核：' + e.engine);
+    if (e.inApp) lines.push('内置浏览器：' + e.inApp.name + ' ' + e.inApp.version);
+    lines.push('屏幕：' + e.screen + '｜视口：' + e.viewport + '｜CPU 核心：' + (e.cores || '?') + '｜内存：' + (e.memory ? e.memory + 'GB' : '?'));
+    lines.push('在线：' + (e.online ? '是' : '否') + '｜HTTPS：' + (e.secure ? '是' : '否') + '｜语言：' + e.language + '｜时区：' + e.timezone);
+    if (e.connection) lines.push('网络类型：' + [e.connection.type, e.connection.effectiveType].join(' ') + '｜RTT：' + e.connection.rtt + 'ms｜下行：' + e.connection.downlink + 'Mbps' + (e.connection.saveData ? '｜省流量' : ''));
+    lines.push('UA：' + e.ua);
+    lines.push('');
+    lines.push('—— 网络 ——');
+    each(r.probes, function (p) { lines.push(fmtProbe(p)); });
+    lines.push('');
+    lines.push('—— 浏览器能力 ——');
+    lines.push(r.features.list.map(function (f) { return (f.ok === null ? '?' : f.ok ? '✓' : '✗') + f.name; }).join('  '));
+    lines.push('');
+    lines.push('—— 存储与性能 ——');
+    lines.push('localStorage：' + (r.storage.local ? '可用，已用约 ' + r.storage.usedKB + 'KB' : '不可用 ' + r.storage.error) + '｜Cookie：' + (r.storage.cookie ? '开' : '关'));
+    lines.push('帧率：' + (r.frames ? r.frames.fps + 'fps（最长一帧 ' + r.frames.worstMs + 'ms）' : '未测') + '｜运算基准：' + r.cpuMs + 'ms');
+    if (r.timing) lines.push('页面加载：DNS ' + r.timing.dns + 'ms｜连接 ' + r.timing.connect + 'ms｜首字节 ' + r.timing.ttfb + 'ms｜DOM 就绪 ' + r.timing.domReady + 'ms' + (r.timing.load !== null ? '｜完成 ' + r.timing.load + 'ms' : ''));
+    each(r.sections || [], function (s) {
+      lines.push('');
+      lines.push('—— ' + s.title + ' ——');
+      each(s.lines, function (l) { lines.push(l); });
+    });
+    return lines.join('\n');
+  }
+
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function stamp() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  /**
+   * 跑完整检测。
+   * opts.targets：要重点检测的站点 [{name, url}]
+   * opts.sections / opts.findings：嵌在界面里时附加的信息（函数，返回数组）
+   * onStep(text)：进度回调
+   */
+  function run(opts, onStep) {
+    opts = opts || {};
+    onStep = onStep || function () {};
+    var r = {time: stamp(), page: location.href.replace(/[?#].*$/, '')};
+    onStep('正在读取浏览器信息…');
+    r.env = collectEnv();
+    r.features = checkFeatures();
+    r.storage = checkStorage();
+    r.timing = pageTiming();
+    var targets = (opts.targets || []).map(function (t) { return {name: t.name, url: t.url, group: 'site'}; }).concat(BASELINES);
+    onStep('正在测试网络连接（每个地址测 ' + ATTEMPTS + ' 次）…');
+    return Promise.all(targets.map(probe)).then(function (probes) {
+      r.probes = probes;
+      onStep('正在测试设备流畅度…');
+      return measureFrames(1200);
+    }).then(function (frames) {
+      r.frames = frames;
+      r.cpuMs = cpuBench();
+      r.sections = opts.sections ? opts.sections() : [];
+      r.findings = opts.findings ? opts.findings(r) : [];
+      r.verdict = verdict(r);
+      r.text = formatReport(r);
+      return r;
+    });
+  }
+
+  /** 复制文字：新接口不可用时退回老办法。 */
+  function copyText(text) {
+    function legacy() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacy(); });
+    }
+    return Promise.resolve(legacy());
+  }
+
+  return {
+    run: run,
+    copyText: copyText,
+    originOf: originOf,
+    hostOf: hostOf,
+    slowResources: slowResources,
+    resourceOrigins: resourceOrigins,
+    LEVEL_TEXT: LEVEL_TEXT
+  };
+})();
+
+/* 检测界面：一屏放下的仪表盘（结论 + 四个状态格），明细收在底部弹层里。
+ * 独立检测页和界面内入口共用，同样只用 ES5。 */
+var NetDiagnoseView = (function () {
+  'use strict';
+
+  var ICON = {bad: '✕', warn: '!', info: 'i', ok: '✓'};
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.appendChild(document.createTextNode(text));
+    return n;
+  }
+  function setText(n, text) { n.textContent = text; }
+  function filter(list, fn) { var out = []; for (var i = 0; i < list.length; i++) if (fn(list[i])) out.push(list[i]); return out; }
+  function worst(states) {
+    var order = ['bad', 'warn', 'ok'];
+    for (var i = 0; i < order.length; i++) for (var j = 0; j < states.length; j++) if (states[j] === order[i]) return order[i];
+    return 'idle';
+  }
+
+  /* ---------- 四个状态格的摘要 ---------- */
+
+  function summarize(r) {
+    var e = r.env;
+    var base = filter(r.probes, function (p) { return p.group !== 'site'; });
+    var sites = filter(r.probes, function (p) { return p.group === 'site'; });
+    var baseOk = filter(base, function (p) { return p.ok > 0; });
+    var baseMs = filter(baseOk, function (p) { return p.group === 'cn'; })[0] || baseOk[0];
+
+    var net = !baseOk.length ? {state: 'bad', value: '不通'}
+      : baseMs.ms > 1500 ? {state: 'warn', value: '偏慢 ' + baseMs.ms + 'ms'} : {state: 'ok', value: '正常 ' + baseMs.ms + 'ms'};
+
+    var server;
+    if (!sites.length) server = {state: 'idle', value: '未配置'};
+    else {
+      var down = filter(sites, function (p) { return p.ok === 0; }), flaky = filter(sites, function (p) { return p.ok > 0 && p.ok < p.attempts; });
+      var slowest = 0;
+      for (var i = 0; i < sites.length; i++) if (sites[i].ms !== null && sites[i].ms > slowest) slowest = sites[i].ms;
+      server = down.length === sites.length ? {state: 'bad', value: '连不上'}
+        : down.length ? {state: 'warn', value: (sites.length - down.length) + '/' + sites.length + ' 可用'} : flaky.length ? {state: 'warn', value: '不稳定'}
+        : slowest > 1500 ? {state: 'warn', value: '偏慢 ' + slowest + 'ms'} : {state: 'ok', value: '正常 ' + slowest + 'ms'};
+    }
+
+    var core = filter(r.features.list, function (f) { return f.level === 'core' && f.ok === false; });
+    var visual = filter(r.features.list, function (f) { return f.level === 'visual' && f.ok === false; });
+    var major = (e.browser.version || '').split('.')[0];
+    var browser = {state: core.length ? 'bad' : e.inApp || visual.length ? 'warn' : 'ok',
+      value: core.length ? '版本太旧' : e.inApp ? e.inApp.name.replace('内置浏览器', '内置') : e.browser.name + (major ? ' ' + major : '')};
+
+    var device = {state: 'ok', value: r.frames ? r.frames.fps + ' 帧' : '正常'};
+    if (!r.storage.local) device = {state: 'bad', value: '存储被禁'};
+    else if ((r.frames && r.frames.fps < 30) || r.cpuMs > 200) device.state = 'warn';
+
+    return [
+      {key: 'net', label: '网络', data: net},
+      {key: 'server', label: '服务器', data: server},
+      {key: 'browser', label: '浏览器', data: browser},
+      {key: 'device', label: '设备', data: device}
+    ];
+  }
+
+  /* ---------- 明细（弹层里） ---------- */
+
+  function row(label, value, state) {
+    var r = el('div', 'nd-row' + (state ? ' nd-' + state : ''));
+    r.appendChild(el('span', 'nd-row-label', label));
+    r.appendChild(el('span', 'nd-row-value', value));
+    return r;
+  }
+  function group(title, open) {
+    var d = el('details', 'nd-group');
+    if (open) d.open = true;
+    d.appendChild(el('summary', '', title));
+    return d;
+  }
+  function probeState(p) { return p.ok === p.attempts ? (p.ms !== null && p.ms > 1500 ? 'warn' : 'ok') : p.ok ? 'warn' : 'bad'; }
+
+  function details(r) {
+    var root = el('div', 'nd-report'), e = r.env;
+
+    for (var i = 0; i < r.verdict.length; i++) {
+      var v = r.verdict[i], card = el('section', 'nd-card nd-' + v.level);
+      card.appendChild(el('span', 'nd-mark', ICON[v.level]));
+      var copy = el('div', 'nd-card-copy');
+      copy.appendChild(el('b', '', v.title));
+      if (v.advice) copy.appendChild(el('p', '', v.advice));
+      card.appendChild(copy);
+      root.appendChild(card);
+    }
+
+    var net = group('网络连接', true);
+    for (var j = 0; j < r.probes.length; j++) {
+      var p = r.probes[j];
+      net.appendChild(row((p.group === 'site' ? '' : p.group === 'cn' ? '国内 · ' : '国际 · ') + p.name,
+        p.ok ? p.ok + '/' + p.attempts + ' · ' + p.ms + 'ms' : '连不上', probeState(p)));
+    }
+    if (e.connection) net.appendChild(row('浏览器估计', [e.connection.effectiveType, e.connection.rtt !== null ? 'RTT ' + e.connection.rtt + 'ms' : '', e.connection.downlink !== null ? e.connection.downlink + 'Mbps' : ''].join(' ')));
+    root.appendChild(net);
+
+    var env = group('设备与浏览器');
+    env.appendChild(row('系统', e.os));
+    env.appendChild(row('浏览器', e.browser.name + ' ' + e.browser.version));
+    env.appendChild(row('内核', e.engine));
+    if (e.inApp) env.appendChild(row('所在 App', e.inApp.name, 'warn'));
+    env.appendChild(row('屏幕', e.screen));
+    env.appendChild(row('HTTPS', e.secure ? '是' : '否', e.secure ? 'ok' : 'warn'));
+    root.appendChild(env);
+
+    var feat = group('浏览器能力');
+    for (var k = 0; k < r.features.list.length; k++) {
+      var f = r.features.list[k];
+      feat.appendChild(row(f.name, f.ok === null ? '未检测' : f.ok ? '支持' : '不支持' + (f.note ? '（' + f.note + '）' : ''),
+        f.ok === null ? '' : f.ok ? 'ok' : f.level === 'core' ? 'bad' : 'warn'));
+    }
+    root.appendChild(feat);
+
+    var perf = group('存储与流畅度');
+    perf.appendChild(row('本地存储', r.storage.local ? '可用 · 约 ' + r.storage.usedKB + 'KB' : '不可用', r.storage.local ? 'ok' : 'bad'));
+    perf.appendChild(row('画面帧率', r.frames ? r.frames.fps + ' fps' : '未测', r.frames ? (r.frames.fps < 30 ? 'warn' : 'ok') : ''));
+    perf.appendChild(row('运算基准', r.cpuMs + 'ms', r.cpuMs > 200 ? 'warn' : 'ok'));
+    if (r.timing) perf.appendChild(row('页面加载', '首字节 ' + r.timing.ttfb + 'ms · 就绪 ' + r.timing.domReady + 'ms'));
+    root.appendChild(perf);
+
+    for (var s = 0; s < (r.sections || []).length; s++) {
+      var sec = group(r.sections[s].title), lines = r.sections[s].lines;
+      for (var l = 0; l < lines.length; l++) sec.appendChild(el('p', 'nd-line', lines[l]));
+      root.appendChild(sec);
+    }
+    return root;
+  }
+
+  /* ---------- 仪表盘 ---------- */
+
+  /**
+   * opts.run(onStep) → Promise<report>
+   * opts.title：顶部小标题；opts.top=false 时不画顶栏（嵌在已有弹窗里）
+   * opts.notify(text)：复制后的提示，默认改按钮文字
+   */
+  function mount(root, opts) {
+    var app = el('div', 'nd-app'), running = false, report = null;
+
+    if (opts.top !== false) {
+      var top = el('header', 'nd-top');
+      top.appendChild(el('span', 'nd-brand', opts.title || '连接自检'));
+      var time = el('span', 'nd-time', '');
+      top.appendChild(time);
+      app.appendChild(top);
+    }
+
+    var hero = el('section', 'nd-hero'), ring = el('div', 'nd-ring'), icon = el('span', 'nd-ring-icon', '');
+    ring.appendChild(icon);
+    var headline = el('h1', 'nd-headline', '正在检测…'), sub = el('p', 'nd-sub', '大约需要 10 秒');
+    var more = el('button', 'nd-more', '查看详情');
+    more.type = 'button';
+    hero.appendChild(ring);
+    hero.appendChild(headline);
+    hero.appendChild(sub);
+    hero.appendChild(more);
+    app.appendChild(hero);
+
+    var tiles = el('section', 'nd-tiles'), tileEls = [];
+    var labels = ['网络', '服务器', '浏览器', '设备'];
+    for (var i = 0; i < labels.length; i++) {
+      var t = el('button', 'nd-tile nd-idle');
+      t.type = 'button';
+      var head = el('span', 'nd-tile-head');
+      head.appendChild(el('span', 'nd-dot'));
+      head.appendChild(el('small', '', labels[i]));
+      t.appendChild(head);
+      t.appendChild(el('b', '', '…'));
+      t.onclick = openSheet;
+      tiles.appendChild(t);
+      tileEls.push(t);
+    }
+    app.appendChild(tiles);
+
+    var bar = el('footer', 'nd-bar'), copy = el('button', 'nd-btn nd-primary', '复制检测报告'), again = el('button', 'nd-btn nd-ghost', '重新检测');
+    copy.type = again.type = 'button';
+    bar.appendChild(copy);
+    bar.appendChild(again);
+    app.appendChild(bar);
+
+    var sheet = el('div', 'nd-sheet'), panel = el('div', 'nd-sheet-panel'), sheetHead = el('header', 'nd-sheet-head'), close = el('button', 'nd-sheet-close', '收起');
+    close.type = 'button';
+    sheetHead.appendChild(el('b', '', '详细结果'));
+    sheetHead.appendChild(close);
+    var sheetBody = el('div', 'nd-sheet-body');
+    panel.appendChild(sheetHead);
+    panel.appendChild(sheetBody);
+    sheet.appendChild(panel);
+    sheet.style.display = 'none';
+    app.appendChild(sheet);
+
+    function openSheet() {
+      if (!report) return;
+      sheetBody.innerHTML = '';
+      sheetBody.appendChild(details(report));
+      sheetBody.scrollTop = 0;
+      sheet.style.display = '';
+    }
+    function closeSheet() { sheet.style.display = 'none'; }
+    more.onclick = openSheet;
+    close.onclick = closeSheet;
+    sheet.onclick = function (ev) { if (ev.target === sheet) closeSheet(); };
+
+    function setState(state) {
+      ring.className = 'nd-ring nd-' + state;
+      setText(icon, ICON[state] || '');
+    }
+
+    function start() {
+      if (running) return;
+      running = true;
+      report = null;
+      closeSheet();
+      setState('run');
+      setText(headline, '正在检测…');
+      setText(sub, '大约需要 10 秒');
+      more.style.visibility = 'hidden';
+      copy.disabled = again.disabled = true;
+      for (var i = 0; i < tileEls.length; i++) {
+        tileEls[i].className = 'nd-tile nd-idle';
+        setText(tileEls[i].lastChild, '…');
+      }
+      opts.run(function (text) { setText(sub, text); }).then(function (r) {
+        report = r;
+        running = false;
+        var main = r.verdict[0], summary = summarize(r), rest = filter(r.verdict, function (v) { return v.level === 'bad' || v.level === 'warn'; }).length;
+        var states = [];
+        for (var i = 0; i < summary.length; i++) {
+          tileEls[i].className = 'nd-tile nd-' + summary[i].data.state;
+          setText(tileEls[i].lastChild, summary[i].data.value);
+          states.push(summary[i].data.state);
+        }
+        setState(main.level === 'info' ? worst(states) : main.level);
+        setText(headline, main.title);
+        setText(sub, main.advice);
+        setText(more, rest > 1 ? '还有 ' + (rest - 1) + ' 条提示 · 查看详情' : '查看详细结果');
+        more.style.visibility = '';
+        if (time) setText(time, r.time.slice(5, 16));
+        copy.disabled = again.disabled = false;
+      }, function (err) {
+        running = false;
+        setState('bad');
+        setText(headline, '检测中途出错了');
+        setText(sub, (err && err.message ? err.message : String(err)) + '。请截图这个页面发给我们。');
+        copy.disabled = again.disabled = false;
+      });
+    }
+
+    copy.onclick = function () {
+      var text = report ? report.text : '检测未完成\nUA：' + navigator.userAgent;
+      NetDiagnose.copyText(text).then(function (ok) {
+        var msg = ok ? '已复制，去粘贴给我们吧' : '复制失败，请截图发给我们';
+        if (opts.notify) return opts.notify(msg);
+        setText(copy, msg);
+        setTimeout(function () { setText(copy, '复制检测报告'); }, 2500);
+      });
+    };
+    again.onclick = start;
+
+    root.appendChild(app);
+    return {start: start};
+  }
+
+  return {mount: mount, el: el};
+})();
+
+/* 独立检测页：不依赖主界面，主界面打不开时也能单独打开。 */
+(function () {
+  'use strict';
+  window.__ndStarted = true;
+
+  // 在这里填上主界面用到的域名，检测页会重点测它们，比如：
+  //   {name: '主站', url: 'https://example.com/favicon.ico'}
+  // 也可以临时在链接后面加 ?target=网址（可以写多个）。
+  // 都没填时，默认检测这个页面自己所在的站点。
+  var SITE_TARGETS = [
+    {name: 'workers.dev', url: 'https://sidebyside.sidebyside-proxy.workers.dev/favicon.ico'},
+    {name: 'nya.pub', url: 'https://sidebyside.nya.pub/favicon.ico'},
+    {name: '8bit.ca', url: 'https://sidebyside.8bit.ca/favicon.ico'},
+    {name: 'mooo.com', url: 'https://sidebyside.mooo.com/favicon.ico'}
+  ];
+
+  function targets() {
+    var list = SITE_TARGETS.slice(), q = location.search.replace(/^\?/, '').split('&');
+    for (var i = 0; i < q.length; i++) {
+      var kv = q[i].split('=');
+      if (kv[0] !== 'target' || !kv[1]) continue;
+      var url = decodeURIComponent(kv[1].replace(/\+/g, ' '));
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      list.push({name: NetDiagnose.hostOf(url) || url, url: url});
+    }
+    if (!list.length && /^https?:$/.test(location.protocol)) {
+      list.push({name: '本站 ' + location.host, url: NetDiagnose.originOf(location.href) + '/favicon.ico'});
+    }
+    return list;
+  }
+
+  var root = document.getElementById('nd-root');
+  root.innerHTML = '';
+  NetDiagnoseView.mount(root, {
+    title: '连接自检',
+    run: function (onStep) { return NetDiagnose.run({targets: targets()}, onStep); }
+  }).start();
+})();
+
+}
+</script>
+</body>
+</html>
