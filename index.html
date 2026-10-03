@@ -46,7 +46,21 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 @keyframes nd-spin{to{transform:rotate(360deg)}}
 .nd-headline{font-size:21px;font-weight:600;line-height:1.45;margin:0 0 8px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
 .nd-sub{font-size:13.5px;line-height:1.75;margin:0;max-width:340px;min-height:3.5em;color:var(--nd-muted,#8b8279);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
-.nd-more{margin-top:12px;border:0;border-radius:20px;padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;color:var(--nd-ink,#2e2a26);background:var(--nd-chip,rgba(46,42,38,.06))}
+.nd-chips{display:flex;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.nd-chips .nd-more{margin:0 4px}
+.nd-more.nd-launch{background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78);font-weight:600}
+.nd-launch-tip{margin:2px 2px 12px;font-size:13px;line-height:1.7;color:var(--nd-muted,#8b8279)}
+.nd-launch-tip:last-child{margin:14px 2px 0;font-size:12px}
+.nd-link{display:flex;align-items:center;padding:14px 16px;margin-bottom:10px;border-radius:16px;text-decoration:none;color:inherit;background:var(--nd-card,#fffcf8);border:1px solid var(--nd-line,#e7dfd5)}
+.nd-link.nd-best{border-color:var(--nd-ok,#4f9a78)}
+.nd-link-copy{flex:1;min-width:0}
+.nd-link-copy b{display:block;font-size:15px;font-weight:600}
+.nd-link-copy small{display:block;margin-top:3px;font-size:12px;color:var(--nd-muted,#8b8279);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-tag{font-style:normal;font-size:11px;font-weight:600;margin-left:8px;padding:2px 7px;border-radius:8px;vertical-align:1px;background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78)}
+.nd-tag-warn{background:var(--nd-warn-soft,rgba(211,154,53,.17));color:var(--nd-warn,#d39a35)}
+.nd-link-ms{flex-shrink:0;margin-left:12px;font-size:13px;color:var(--nd-muted,#8b8279)}
+.nd-link-go{flex-shrink:0;margin-left:10px;font-size:20px;color:var(--nd-muted,#8b8279)}
+.nd-more{border:0;border-radius:20px;padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;color:var(--nd-ink,#2e2a26);background:var(--nd-chip,rgba(46,42,38,.06))}
 
 .nd-tiles{display:flex;flex-wrap:wrap;justify-content:space-between;flex-shrink:0}
 .nd-tile{width:calc(50% - 5px);margin-bottom:10px;padding:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:18px;border:1px solid var(--nd-line,#e7dfd5);background:var(--nd-card,#fffcf8)}
@@ -89,7 +103,7 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 
 /* 矮屏幕：缩小圆环，保证一屏放得下。 */
 @media (max-height:680px){.nd-ring{width:100px;height:100px;margin-bottom:16px}.nd-ring::before{top:11px;left:11px;right:11px;bottom:11px}.nd-ring-icon{font-size:34px}.nd-headline{font-size:19px}}
-@media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-more{margin-top:8px;padding:6px 14px}.nd-tile{padding:10px 12px}}
+@media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-chips{margin-top:8px}.nd-more{padding:6px 14px}.nd-tile{padding:10px 12px}}
 @media (max-height:560px){.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
 
 </style>
@@ -323,7 +337,7 @@ var NetDiagnose = (function () {
     function next() {
       if (results.length >= ATTEMPTS) {
         var ok = filter(results, function (r) { return r.ok; });
-        return {name: t.name, url: t.url, group: t.group, attempts: ATTEMPTS, ok: ok.length,
+        return {name: t.name, url: t.url, open: t.open, group: t.group, attempts: ATTEMPTS, ok: ok.length,
           ms: median(ok.length ? ok.map(function (r) { return r.ms; }) : []), results: results};
       }
       return probeOnce(t.url, TIMEOUT).then(function (r) { results.push(r); return next(); });
@@ -516,7 +530,7 @@ var NetDiagnose = (function () {
     r.features = checkFeatures();
     r.storage = checkStorage();
     r.timing = pageTiming();
-    var targets = (opts.targets || []).map(function (t) { return {name: t.name, url: t.url, group: 'site'}; }).concat(BASELINES);
+    var targets = (opts.targets || []).map(function (t) { return {name: t.name, url: t.url, open: t.open, group: 'site'}; }).concat(BASELINES);
     onStep('正在测试网络连接（每个地址测 ' + ATTEMPTS + ' 次）…');
     return Promise.all(targets.map(probe)).then(function (probes) {
       r.probes = probes;
@@ -754,6 +768,59 @@ var NetDiagnoseView = (function () {
     return form;
   }
 
+  /* ---------- 底部弹层 ---------- */
+
+  function makeSheet(app, title) {
+    var sheet = el('div', 'nd-sheet'), panel = el('div', 'nd-sheet-panel'), head = el('header', 'nd-sheet-head'), close = el('button', 'nd-sheet-close', '收起');
+    var body = el('div', 'nd-sheet-body');
+    close.type = 'button';
+    head.appendChild(el('b', '', title));
+    head.appendChild(close);
+    panel.appendChild(head);
+    panel.appendChild(body);
+    sheet.appendChild(panel);
+    sheet.style.display = 'none';
+    app.appendChild(sheet);
+    function hide() { sheet.style.display = 'none'; }
+    close.onclick = hide;
+    sheet.onclick = function (ev) { if (ev.target === sheet) hide(); };
+    return {
+      hide: hide,
+      show: function (content) { body.innerHTML = ''; body.appendChild(content); body.scrollTop = 0; sheet.style.display = ''; }
+    };
+  }
+
+  /* ---------- 能打开的线路 ---------- */
+
+  /** 能连上的站点：全部成功的排前面，同档按速度排。 */
+  function usableSites(r) {
+    return filter(r.probes, function (p) { return p.group === 'site' && p.open && p.ok > 0; }).sort(function (a, b) {
+      var sa = a.ok === a.attempts ? 0 : 1, sb = b.ok === b.attempts ? 0 : 1;
+      return sa - sb || a.ms - b.ms;
+    });
+  }
+
+  function launchList(sites) {
+    var box = el('div', 'nd-launch-list');
+    box.appendChild(el('p', 'nd-launch-tip', '下面这些线路现在能连上，点一条就会打开网站：'));
+    for (var i = 0; i < sites.length; i++) {
+      var p = sites[i], stable = p.ok === p.attempts;
+      var a = el('a', 'nd-link' + (i === 0 ? ' nd-best' : ''));
+      a.href = p.open;
+      var copy = el('span', 'nd-link-copy'), name = el('b', '', p.name);
+      if (i === 0 && stable) name.appendChild(el('em', 'nd-tag', '最快'));
+      if (!stable) name.appendChild(el('em', 'nd-tag nd-tag-warn', '不稳定'));
+      copy.appendChild(name);
+      copy.appendChild(el('small', '', NetDiagnose.hostOf(p.open)));
+      a.appendChild(copy);
+      a.appendChild(el('span', 'nd-link-ms', p.ms + 'ms'));
+      a.appendChild(el('span', 'nd-link-go', '›'));
+      box.appendChild(a);
+    }
+    box.appendChild(el('p', 'nd-launch-tip', '点开还是进不去的话，回到这里换一条，或者复制检测报告发给我们。'));
+    return box;
+  }
+
   /* ---------- 仪表盘 ---------- */
 
   /**
@@ -761,6 +828,7 @@ var NetDiagnoseView = (function () {
    * opts.title：顶部小标题；opts.top=false 时不画顶栏（嵌在已有弹窗里）
    * opts.notify(text)：复制后的提示，默认改按钮文字
    * opts.custom：显示“自己输入网址检测”的输入框
+   * opts.launch：检测完自动弹出能连上的线路，让对方自己选一条打开
    */
   function mount(root, opts) {
     var app = el('div', 'nd-app'), running = false, report = null;
@@ -784,7 +852,12 @@ var NetDiagnoseView = (function () {
     hero.appendChild(ring);
     hero.appendChild(headline);
     hero.appendChild(sub);
-    hero.appendChild(more);
+    var chips = el('div', 'nd-chips'), launch = el('button', 'nd-more nd-launch', '打开网站');
+    launch.type = 'button';
+    launch.style.display = 'none';
+    chips.appendChild(launch);
+    chips.appendChild(more);
+    hero.appendChild(chips);
     app.appendChild(hero);
 
     var tiles = el('section', 'nd-tiles'), tileEls = [];
@@ -809,28 +882,22 @@ var NetDiagnoseView = (function () {
     bar.appendChild(again);
     app.appendChild(bar);
 
-    var sheet = el('div', 'nd-sheet'), panel = el('div', 'nd-sheet-panel'), sheetHead = el('header', 'nd-sheet-head'), close = el('button', 'nd-sheet-close', '收起');
-    close.type = 'button';
-    sheetHead.appendChild(el('b', '', '详细结果'));
-    sheetHead.appendChild(close);
-    var sheetBody = el('div', 'nd-sheet-body');
-    panel.appendChild(sheetHead);
-    panel.appendChild(sheetBody);
-    sheet.appendChild(panel);
-    sheet.style.display = 'none';
-    app.appendChild(sheet);
+    var detailSheet = makeSheet(app, '详细结果'), launchSheet = makeSheet(app, '选一条线路打开');
+    var sites = [];
 
     function openSheet() {
       if (!report) return;
-      sheetBody.innerHTML = '';
-      sheetBody.appendChild(details(report));
-      sheetBody.scrollTop = 0;
-      sheet.style.display = '';
+      launchSheet.hide();
+      detailSheet.show(details(report));
     }
-    function closeSheet() { sheet.style.display = 'none'; }
+    function openLaunch() {
+      if (!sites.length) return;
+      detailSheet.hide();
+      launchSheet.show(launchList(sites));
+    }
+    function closeSheet() { detailSheet.hide(); launchSheet.hide(); }
     more.onclick = openSheet;
-    close.onclick = closeSheet;
-    sheet.onclick = function (ev) { if (ev.target === sheet) closeSheet(); };
+    launch.onclick = openLaunch;
 
     function setState(state) {
       ring.className = 'nd-ring nd-' + state;
@@ -846,6 +913,8 @@ var NetDiagnoseView = (function () {
       setText(headline, '正在检测…');
       setText(sub, '大约需要 10 秒');
       more.style.visibility = 'hidden';
+      launch.style.display = 'none';
+      sites = [];
       copy.disabled = again.disabled = true;
       for (var i = 0; i < tileEls.length; i++) {
         tileEls[i].className = 'nd-tile nd-idle';
@@ -868,6 +937,14 @@ var NetDiagnoseView = (function () {
         more.style.visibility = '';
         if (time) setText(time, r.time.slice(5, 16));
         copy.disabled = again.disabled = false;
+        if (opts.launch) {
+          sites = usableSites(r);
+          if (sites.length) {
+            setText(launch, '打开网站 · ' + sites.length + ' 条可用');
+            launch.style.display = '';
+            openLaunch();
+          }
+        }
       }, function (err) {
         running = false;
         setState('bad');
@@ -902,14 +979,14 @@ var NetDiagnoseView = (function () {
   window.__ndStarted = true;
 
   // 在这里填上主界面用到的域名，检测页会重点测它们，比如：
-  //   {name: '主站', url: 'https://example.com/favicon.ico'}
+  //   {name: '主站', url: 'https://example.com/favicon.ico', open: 'https://example.com/'}
   // 也可以临时在链接后面加 ?target=网址（可以写多个）。
   // 都没填时，默认检测这个页面自己所在的站点。
   var SITE_TARGETS = [
-    {name: 'workers.dev', url: 'https://sidebyside.sidebyside-proxy.workers.dev/favicon.ico'},
-    {name: 'nya.pub', url: 'https://sidebyside.nya.pub/favicon.ico'},
-    {name: '8bit.ca', url: 'https://sidebyside.8bit.ca/favicon.ico'},
-    {name: 'mooo.com', url: 'https://sidebyside.mooo.com/favicon.ico'}
+    {name: 'workers.dev', url: 'https://sidebyside.sidebyside-proxy.workers.dev/favicon.ico', open: 'https://sidebyside.sidebyside-proxy.workers.dev/'},
+    {name: 'nya.pub', url: 'https://sidebyside.nya.pub/favicon.ico', open: 'https://sidebyside.nya.pub/'},
+    {name: '8bit.ca', url: 'https://sidebyside.8bit.ca/favicon.ico', open: 'https://sidebyside.8bit.ca/'},
+    {name: 'mooo.com', url: 'https://sidebyside.mooo.com/favicon.ico', open: 'https://sidebyside.mooo.com/'}
   ];
 
   function targets() {
@@ -932,6 +1009,7 @@ var NetDiagnoseView = (function () {
   NetDiagnoseView.mount(root, {
     title: '连接自检',
     custom: true,
+    launch: true,
     run: function (onStep) { return NetDiagnose.run({targets: targets()}, onStep); }
   }).start();
 })();
