@@ -25,7 +25,17 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 .nd-brand{font-weight:600;letter-spacing:1px;color:var(--nd-ink,#2e2a26)}
 .nd-brand::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--nd-run,#7b86b8);vertical-align:1px}
 
+.nd-custom{flex-shrink:0;margin:6px 0 0}
+.nd-custom-field{display:flex;height:44px;border-radius:14px;overflow:hidden;border:1px solid var(--nd-line,#e7dfd5);background:var(--nd-card,#fffcf8)}
+.nd-input{flex:1;min-width:0;border:0;outline:0;padding:0 14px;font:inherit;font-size:16px;color:inherit;background:transparent;-webkit-appearance:none;border-radius:0}
+.nd-input::placeholder{color:var(--nd-muted,#8b8279);opacity:.7}
+.nd-custom-field:focus-within{border-color:var(--nd-run,#7b86b8)}
+.nd-go{flex-shrink:0;border:0;padding:0 18px;font:inherit;font-size:14px;cursor:pointer;background:var(--nd-chip,rgba(46,42,38,.06));color:var(--nd-ink,#2e2a26)}
+.nd-go:disabled{opacity:.5}
+.nd-custom-result{margin:7px 2px 0;font-size:12.5px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--nd-muted,#8b8279)}
+.nd-custom-result.nd-ok{color:var(--nd-ok,#4f9a78)}.nd-custom-result.nd-warn{color:var(--nd-warn,#d39a35)}.nd-custom-result.nd-bad{color:var(--nd-bad,#d4645a)}.nd-custom-result.nd-run{color:var(--nd-run,#7b86b8)}
 .nd-hero{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px 4px}
+.nd-hero>*{flex-shrink:0}
 .nd-ring{position:relative;flex-shrink:0;width:128px;height:128px;border-radius:50%;margin-bottom:22px;display:flex;align-items:center;justify-content:center;background:var(--nd-run-soft,rgba(123,134,184,.15));color:var(--nd-run,#7b86b8)}
 .nd-ring::before{content:"";position:absolute;top:14px;left:14px;right:14px;bottom:14px;border-radius:50%;background:var(--nd-card,#fffcf8)}
 .nd-ring-icon{position:relative;font-size:42px;font-weight:600;line-height:1}
@@ -79,7 +89,8 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 
 /* 矮屏幕：缩小圆环，保证一屏放得下。 */
 @media (max-height:680px){.nd-ring{width:100px;height:100px;margin-bottom:16px}.nd-ring::before{top:11px;left:11px;right:11px;bottom:11px}.nd-ring-icon{font-size:34px}.nd-headline{font-size:19px}}
-@media (max-height:560px){.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
+@media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-more{margin-top:8px;padding:6px 14px}.nd-tile{padding:10px 12px}}
+@media (max-height:560px){.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
 
 </style>
 </head>
@@ -543,8 +554,19 @@ var NetDiagnose = (function () {
     return Promise.resolve(legacy());
   }
 
+  /** 检测用户自己输入的网址。返回 null 表示网址格式不对。 */
+  function checkUrl(input) {
+    var url = String(input || '').replace(/^\s+|\s+$/g, '');
+    if (!url) return null;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    if (!/^https?:\/\/[^\/\s?#.]+(\.[^\/\s?#.]+)+(:\d+)?([\/?#]\S*)?$/i.test(url) && !/^https?:\/\/localhost(:\d+)?([\/?#]\S*)?$/i.test(url)) return null;
+    return probe({name: hostOf(url), url: url, group: 'custom'});
+  }
+
   return {
     run: run,
+    checkUrl: checkUrl,
+    formatProbe: fmtProbe,
     copyText: copyText,
     originOf: originOf,
     hostOf: hostOf,
@@ -686,12 +708,59 @@ var NetDiagnoseView = (function () {
     return root;
   }
 
+  /* ---------- 自己输入网址检测 ---------- */
+
+  function customBox(results) {
+    var form = el('form', 'nd-custom'), field = el('div', 'nd-custom-field');
+    var input = el('input', 'nd-input'), go = el('button', 'nd-go', '检测'), out = el('p', 'nd-custom-result nd-idle', '输入任意网址，单独测它能不能连上');
+    input.type = 'text';
+    input.setAttribute('inputmode', 'url');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.placeholder = '例如 sidebyside.nya.pub';
+    go.type = 'submit';
+    field.appendChild(input);
+    field.appendChild(go);
+    form.appendChild(field);
+    form.appendChild(out);
+    var busy = false;
+    form.onsubmit = function (ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (busy) return false;
+      var task = NetDiagnose.checkUrl(input.value);
+      if (!task) {
+        out.className = 'nd-custom-result nd-bad';
+        setText(out, '网址格式不对，试试 example.com 这样的写法');
+        return false;
+      }
+      busy = true;
+      go.disabled = true;
+      out.className = 'nd-custom-result nd-run';
+      setText(out, '正在检测 ' + input.value.replace(/^\s+|\s+$/g, '') + '…');
+      if (input.blur) input.blur();
+      task.then(function (p) {
+        busy = false;
+        go.disabled = false;
+        results.push(p);
+        var reasons = filter(p.results, function (x) { return !x.ok; }).map(function (x) { return x.detail; });
+        var state = p.ok === p.attempts ? (p.ms > 1500 ? 'warn' : 'ok') : p.ok ? 'warn' : 'bad';
+        out.className = 'nd-custom-result nd-' + state;
+        setText(out, ICON[state] + ' ' + p.name + '：' + (p.ok === 0 ? '连不上（' + reasons[0] + '）'
+          : (p.ok < p.attempts ? '不稳定 ' : p.ms > 1500 ? '偏慢 ' : '能连上 ') + p.ok + '/' + p.attempts + ' · ' + p.ms + 'ms'));
+      });
+      return false;
+    };
+    return form;
+  }
+
   /* ---------- 仪表盘 ---------- */
 
   /**
    * opts.run(onStep) → Promise<report>
    * opts.title：顶部小标题；opts.top=false 时不画顶栏（嵌在已有弹窗里）
    * opts.notify(text)：复制后的提示，默认改按钮文字
+   * opts.custom：显示“自己输入网址检测”的输入框
    */
   function mount(root, opts) {
     var app = el('div', 'nd-app'), running = false, report = null;
@@ -703,6 +772,9 @@ var NetDiagnoseView = (function () {
       top.appendChild(time);
       app.appendChild(top);
     }
+
+    var customs = [];
+    if (opts.custom) app.appendChild(customBox(customs));
 
     var hero = el('section', 'nd-hero'), ring = el('div', 'nd-ring'), icon = el('span', 'nd-ring-icon', '');
     ring.appendChild(icon);
@@ -807,6 +879,7 @@ var NetDiagnoseView = (function () {
 
     copy.onclick = function () {
       var text = report ? report.text : '检测未完成\nUA：' + navigator.userAgent;
+      if (customs.length) text += '\n\n—— 自己输入的网址 ——\n' + customs.map(NetDiagnose.formatProbe).join('\n');
       NetDiagnose.copyText(text).then(function (ok) {
         var msg = ok ? '已复制，去粘贴给我们吧' : '复制失败，请截图发给我们';
         if (opts.notify) return opts.notify(msg);
@@ -858,6 +931,7 @@ var NetDiagnoseView = (function () {
   root.innerHTML = '';
   NetDiagnoseView.mount(root, {
     title: '连接自检',
+    custom: true,
     run: function (onStep) { return NetDiagnose.run({targets: targets()}, onStep); }
   }).start();
 })();
