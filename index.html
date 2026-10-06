@@ -59,6 +59,10 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 .nd-link-copy b{display:block;font-size:15px;font-weight:600}
 .nd-link-copy small{display:block;margin-top:3px;font-size:12px;color:var(--nd-muted,#8b8279);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nd-tag{font-style:normal;font-size:11px;font-weight:600;margin-left:8px;padding:2px 7px;border-radius:8px;vertical-align:1px;background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78)}
+.nd-qq{display:flex;align-items:center;margin-top:4px;padding:12px 14px;border-radius:16px;background:var(--nd-run-soft,rgba(123,134,184,.15))}
+.nd-qq-copy{flex:1;min-width:0;font-size:13px;line-height:1.7}
+.nd-qq-copy b{display:block;font-size:17px;font-weight:600;letter-spacing:.5px;user-select:all;-webkit-user-select:all}
+.nd-qq-btn{flex-shrink:0;margin-left:10px;border:0;background:var(--nd-run,#7b86b8);color:#fff;font:inherit;font-size:13px;padding:7px 14px;border-radius:16px;cursor:pointer}
 .nd-tag-warn{background:var(--nd-warn-soft,rgba(211,154,53,.17));color:var(--nd-warn,#d39a35)}
 .nd-link-ms{flex-shrink:0;margin-left:12px;font-size:13px;color:var(--nd-muted,#8b8279)}
 .nd-link-go{flex-shrink:0;margin-left:10px;font-size:20px;color:var(--nd-muted,#8b8279)}
@@ -803,6 +807,24 @@ var NetDiagnoseView = (function () {
     });
   }
 
+  /** 安卓下载版的 Q 群，群号点一下就能复制。 */
+  var QQ_GROUP = '181341349';
+  function qqCard() {
+    var card = el('div', 'nd-qq'), copy = el('div', 'nd-qq-copy', '如需安卓下载版本，请添加 Q 群获取文件：');
+    copy.appendChild(el('b', '', QQ_GROUP));
+    var btn = el('button', 'nd-qq-btn', '复制群号');
+    btn.type = 'button';
+    btn.onclick = function () {
+      NetDiagnose.copyText(QQ_GROUP).then(function (ok) {
+        setText(btn, ok ? '已复制' : '请长按群号复制');
+        setTimeout(function () { setText(btn, '复制群号'); }, 2500);
+      });
+    };
+    card.appendChild(copy);
+    card.appendChild(btn);
+    return card;
+  }
+
   function launchList(sites) {
     var box = el('div', 'nd-launch-list');
     box.appendChild(el('p', 'nd-launch-tip', '下面这些线路现在能连上，点一条就会打开网站：'));
@@ -820,6 +842,7 @@ var NetDiagnoseView = (function () {
       a.appendChild(el('span', 'nd-link-go', '›'));
       box.appendChild(a);
     }
+    box.appendChild(qqCard());
     box.appendChild(el('p', 'nd-launch-tip', '点开还是进不去的话，回到这里换一条，或者复制检测报告发给我们。'));
     return box;
   }
