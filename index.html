@@ -47,7 +47,7 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 .nd-ring.nd-bad{background:var(--nd-bad-soft,rgba(212,100,90,.15));color:var(--nd-bad,#d4645a)}
 @keyframes nd-spin{to{transform:rotate(360deg)}}
 .nd-headline{font-size:21px;font-weight:600;line-height:1.45;margin:0 0 8px;max-width:340px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
-.nd-sub{font-size:13.5px;line-height:1.75;margin:0;max-width:340px;min-height:3.5em;color:var(--nd-muted,#8b8279);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.nd-sub{font-size:13.5px;line-height:1.75;margin:0;max-width:340px;min-height:3.5em;color:var(--nd-muted,#8b8279);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical}
 .nd-chips{display:flex;flex-wrap:wrap;justify-content:center;margin-top:12px}
 .nd-chips .nd-more{margin:0 4px}
 .nd-more.nd-launch{background:var(--nd-ok-soft,rgba(79,154,120,.15));color:var(--nd-ok,#4f9a78);font-weight:600}
@@ -110,7 +110,7 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 
 /* 矮屏幕：缩小圆环，保证一屏放得下。 */
 @media (max-height:680px){.nd-ring{width:100px;height:100px;margin-bottom:16px}.nd-ring::before{top:11px;left:11px;right:11px;bottom:11px}.nd-ring-icon{font-size:34px}.nd-headline{font-size:19px}}
-@media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-chips{margin-top:8px}.nd-more{padding:6px 14px}.nd-tile{padding:10px 12px}}
+@media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:4;min-height:0}.nd-chips{margin-top:8px}.nd-more{padding:6px 14px}.nd-tile{padding:10px 12px}}
 @media (max-height:560px){.nd-credit{margin-top:6px}.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
 
 </style>
@@ -431,8 +431,8 @@ var NetDiagnose = (function () {
     if (base.length && !internetOk && siteDown.length === sites.length) {
       add('bad', '网络整体不通', '国内外常用网站都连不上，问题在你这边的网络。换个 Wi-Fi 或切到移动数据，关掉代理 / VPN 再试。');
     } else if (siteDown.length === sites.length) {
-      add('bad', '能上网，但连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
-        '普通网站正常，唯独连不上我们的服务器。可能是运营商线路、DNS 或拦截问题，也可能是服务器本身。先换个网络试试（Wi-Fi ⇄ 流量），再把这份报告发给我们。');
+      add('bad', '当前网络无法连接本站服务',
+        '普通网站可以正常访问，但本站所需的多个服务域名均无法连接。这说明问题来自你当前使用的网络、DNS或运营商限制，并非网站故障。请切换 Wi‑Fi/流量后重试。此类网络限制站方无法远程修复，无需反馈。');
     } else if (siteDown.length) {
       var usable = filter(sites, function (p) { return p.ok > 0; }).sort(function (a, b) { return a.ms - b.ms; });
       add('warn', '部分线路连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
