@@ -62,6 +62,8 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 .nd-qq{display:flex;align-items:center;margin-top:4px;padding:12px 14px;border-radius:16px;background:var(--nd-run-soft,rgba(123,134,184,.15))}
 .nd-qq-copy{flex:1;min-width:0;font-size:13px;line-height:1.7}
 .nd-qq-copy b{display:block;font-size:17px;font-weight:600;letter-spacing:.5px;user-select:all;-webkit-user-select:all}
+.nd-device{margin:0 0 10px}
+.nd-device small{display:block;font-size:12px;color:var(--nd-muted,#8b8279)}
 .nd-qq-btn{flex-shrink:0;margin-left:10px;border:0;background:var(--nd-run,#7b86b8);color:#fff;font:inherit;font-size:13px;padding:7px 14px;border-radius:16px;cursor:pointer}
 .nd-tag-warn{background:var(--nd-warn-soft,rgba(211,154,53,.17));color:var(--nd-warn,#d39a35)}
 .nd-link-ms{flex-shrink:0;margin-left:12px;font-size:13px;color:var(--nd-muted,#8b8279)}
@@ -482,6 +484,23 @@ var NetDiagnose = (function () {
       (p.ok < p.attempts ? '，失败原因：' + filter(p.results, function (x) { return !x.ok; }).map(function (x) { return x.detail; }).join('/') : '');
   }
 
+  /** 本机配置的几行：完整报告和“只复制本机配置”共用。 */
+  function envLines(e) {
+    var lines = [];
+    lines.push('系统：' + e.os + '｜浏览器：' + e.browser.name + ' ' + e.browser.version + '｜内核：' + e.engine);
+    if (e.inApp) lines.push('内置浏览器：' + e.inApp.name + ' ' + e.inApp.version);
+    lines.push('屏幕：' + e.screen + '｜视口：' + e.viewport + '｜CPU 核心：' + (e.cores || '?') + '｜内存：' + (e.memory ? e.memory + 'GB' : '?'));
+    lines.push('在线：' + (e.online ? '是' : '否') + '｜HTTPS：' + (e.secure ? '是' : '否') + '｜语言：' + e.language + '｜时区：' + e.timezone);
+    if (e.connection) lines.push('网络类型：' + [e.connection.type, e.connection.effectiveType].join(' ') + '｜RTT：' + e.connection.rtt + 'ms｜下行：' + e.connection.downlink + 'Mbps' + (e.connection.saveData ? '｜省流量' : ''));
+    lines.push('UA：' + e.ua);
+    return lines;
+  }
+
+  /** 只有本机配置的短文本，反馈 bug 时附上。视口等会变的信息当场重新读。 */
+  function formatDevice(siteName) {
+    return ['【' + (siteName ? siteName + ' · ' : '') + '本机配置】' + stamp()].concat(envLines(collectEnv())).join('\n');
+  }
+
   function formatReport(r) {
     var e = r.env, lines = [];
     lines.push('【' + (r.siteName ? r.siteName + ' · ' : '') + '连接自检报告】' + r.time);
@@ -491,12 +510,7 @@ var NetDiagnose = (function () {
     each(r.verdict, function (v) { lines.push('[' + LEVEL_TEXT[v.level] + '] ' + v.title); });
     lines.push('');
     lines.push('—— 环境 ——');
-    lines.push('系统：' + e.os + '｜浏览器：' + e.browser.name + ' ' + e.browser.version + '｜内核：' + e.engine);
-    if (e.inApp) lines.push('内置浏览器：' + e.inApp.name + ' ' + e.inApp.version);
-    lines.push('屏幕：' + e.screen + '｜视口：' + e.viewport + '｜CPU 核心：' + (e.cores || '?') + '｜内存：' + (e.memory ? e.memory + 'GB' : '?'));
-    lines.push('在线：' + (e.online ? '是' : '否') + '｜HTTPS：' + (e.secure ? '是' : '否') + '｜语言：' + e.language + '｜时区：' + e.timezone);
-    if (e.connection) lines.push('网络类型：' + [e.connection.type, e.connection.effectiveType].join(' ') + '｜RTT：' + e.connection.rtt + 'ms｜下行：' + e.connection.downlink + 'Mbps' + (e.connection.saveData ? '｜省流量' : ''));
-    lines.push('UA：' + e.ua);
+    each(envLines(e), function (l) { lines.push(l); });
     lines.push('');
     lines.push('—— 网络 ——');
     each(r.probes, function (p) { lines.push(fmtProbe(p)); });
@@ -588,6 +602,7 @@ var NetDiagnose = (function () {
     run: run,
     checkUrl: checkUrl,
     formatProbe: fmtProbe,
+    formatDevice: formatDevice,
     copyText: copyText,
     originOf: originOf,
     hostOf: hostOf,
@@ -675,8 +690,26 @@ var NetDiagnoseView = (function () {
   }
   function probeState(p) { return p.ok === p.attempts ? (p.ms !== null && p.ms > 1500 ? 'warn' : 'ok') : p.ok ? 'warn' : 'bad'; }
 
+  /** 只复制本机配置：反馈 bug 时用，不带线路检测那一大堆。 */
+  function deviceCard(siteName) {
+    var card = el('div', 'nd-qq nd-device'), copy = el('div', 'nd-qq-copy', '反馈 bug 时，把本机配置一起发给我们：');
+    copy.appendChild(el('small', '', '只有系统、浏览器、屏幕这些，不含检测结果'));
+    var btn = el('button', 'nd-qq-btn', '复制本机配置');
+    btn.type = 'button';
+    btn.onclick = function () {
+      NetDiagnose.copyText(NetDiagnose.formatDevice(siteName)).then(function (ok) {
+        setText(btn, ok ? '已复制' : '复制失败，请截图');
+        setTimeout(function () { setText(btn, '复制本机配置'); }, 2500);
+      });
+    };
+    card.appendChild(copy);
+    card.appendChild(btn);
+    return card;
+  }
+
   function details(r) {
     var root = el('div', 'nd-report'), e = r.env;
+    root.appendChild(deviceCard(r.siteName));
 
     for (var i = 0; i < r.verdict.length; i++) {
       var v = r.verdict[i], card = el('section', 'nd-card nd-' + v.level);
