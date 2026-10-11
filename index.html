@@ -220,6 +220,57 @@ var NetDiagnose = (function () {
     return '未知';
   }
 
+  /* ---------- 机型：UA 里经常不写，只能尽量猜 ---------- */
+
+  // iPhone 的 UA 不带型号，只能按屏幕逻辑尺寸 + 像素比推出是哪一代。
+  var IPHONES = [
+    ['320×568@2', 'iPhone 5 / 5s / SE（第一代）'],
+    ['375×667@2', 'iPhone 6 / 6s / 7 / 8 / SE（第二、三代）'],
+    ['414×736@3', 'iPhone 6 Plus / 6s Plus / 7 Plus / 8 Plus'],
+    ['375×812@3', 'iPhone X / XS / 11 Pro / 12 mini / 13 mini'],
+    ['414×896@2', 'iPhone XR / 11'],
+    ['414×896@3', 'iPhone XS Max / 11 Pro Max'],
+    ['390×844@3', 'iPhone 12 / 12 Pro / 13 / 13 Pro / 14 / 16e'],
+    ['428×926@3', 'iPhone 12 Pro Max / 13 Pro Max / 14 Plus'],
+    ['393×852@3', 'iPhone 14 Pro / 15 / 15 Pro / 16'],
+    ['430×932@3', 'iPhone 14 Pro Max / 15 Plus / 15 Pro Max / 16 Plus'],
+    ['402×874@3', 'iPhone 16 Pro / 17 / 17 Pro'],
+    ['420×912@3', 'iPhone Air'],
+    ['440×956@3', 'iPhone 16 Pro Max / 17 Pro Max']
+  ];
+
+  function guessIPhone() {
+    var w = Math.min(screen.width, screen.height), h = Math.max(screen.width, screen.height);
+    var key = w + '×' + h + '@' + Math.round(window.devicePixelRatio || 1);
+    for (var i = 0; i < IPHONES.length; i++) if (IPHONES[i][0] === key) return IPHONES[i][1] + '（按屏幕推测）';
+    return 'iPhone（型号未知，屏幕 ' + key + 'x）';
+  }
+
+  /** 安卓 UA 括号里 “Android 13; 型号 Build/…” 那一段。新版 Chrome 会冻结成 “K”，算没有。 */
+  function modelFromUA(ua) {
+    var m = /\(([^)]*Android[^)]*)\)/.exec(ua);
+    if (!m) return '';
+    var parts = m[1].split(';');
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var t = parts[i].replace(/\s*Build\/.*$/, '').replace(/^\s+|\s+$/g, '');
+      if (!t || t === 'K' || t === 'wv' || /^(Linux|U|Mobile|Android[\s\d.]*|[a-z]{2}[-_][a-zA-Z]{2})$/.test(t)) continue;
+      return t;
+    }
+    return '';
+  }
+
+  /** 机型，异步：安卓优先问 Client Hints（UA 被冻结时只有它能拿到型号），iPhone 按屏幕推测。 */
+  function detectModel(ua) {
+    if (/iPhone|iPod/.test(ua)) return Promise.resolve(guessIPhone());
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return Promise.resolve('iPad（iPadOS 不提供具体型号）');
+    var fromUA = modelFromUA(ua);
+    var uad = navigator.userAgentData;
+    if (!uad || !uad.getHighEntropyValues) return Promise.resolve(fromUA);
+    var hints = uad.getHighEntropyValues(['model']).then(function (v) { return v.model || fromUA; }, function () { return fromUA; });
+    var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(fromUA); }, 1500); });
+    return Promise.race([hints, timeout]);
+  }
+
   function collectEnv() {
     var ua = navigator.userAgent || '', conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     var engine = /(?:Chrome|CriOS)\/(\d+)/.exec(ua), webkit = /AppleWebKit\/([\d.]+)/.exec(ua);
@@ -487,6 +538,7 @@ var NetDiagnose = (function () {
   /** 本机配置的几行：完整报告和“只复制本机配置”共用。 */
   function envLines(e) {
     var lines = [];
+    lines.push('机型：' + (e.model || '未知（手机没有提供）'));
     lines.push('系统：' + e.os + '｜浏览器：' + e.browser.name + ' ' + e.browser.version + '｜内核：' + e.engine);
     if (e.inApp) lines.push('内置浏览器：' + e.inApp.name + ' ' + e.inApp.version);
     lines.push('屏幕：' + e.screen + '｜视口：' + e.viewport + '｜CPU 核心：' + (e.cores || '?') + '｜内存：' + (e.memory ? e.memory + 'GB' : '?'));
@@ -496,9 +548,13 @@ var NetDiagnose = (function () {
     return lines;
   }
 
-  /** 只有本机配置的短文本，反馈 bug 时附上。视口等会变的信息当场重新读。 */
+  /** 只有本机配置的短文本，反馈 bug 时附上。视口等会变的信息当场重新读。返回 Promise。 */
   function formatDevice(siteName) {
-    return ['【' + (siteName ? siteName + ' · ' : '') + '本机配置】' + stamp()].concat(envLines(collectEnv())).join('\n');
+    var e = collectEnv();
+    return detectModel(e.ua).then(function (model) {
+      e.model = model;
+      return ['【' + (siteName ? siteName + ' · ' : '') + '本机配置】' + stamp()].concat(envLines(e)).join('\n');
+    });
   }
 
   function formatReport(r) {
@@ -548,12 +604,14 @@ var NetDiagnose = (function () {
     var r = {time: stamp(), page: location.href.replace(/[?#].*$/, ''), siteName: opts.siteName || ''};
     onStep('正在读取浏览器信息…');
     r.env = collectEnv();
+    var model = detectModel(r.env.ua).then(function (m) { r.env.model = m; });
     r.features = checkFeatures();
     r.storage = checkStorage();
     r.timing = pageTiming();
     var targets = (opts.targets || []).map(function (t) { return {name: t.name, url: t.url, open: t.open, group: 'site'}; }).concat(BASELINES);
     onStep('正在测试网络连接（每个地址测 ' + ATTEMPTS + ' 次）…');
-    return Promise.all(targets.map(probe)).then(function (probes) {
+    return Promise.all([Promise.all(targets.map(probe)), model]).then(function (got) {
+      var probes = got[0];
       r.probes = probes;
       onStep('正在测试设备流畅度…');
       return measureFrames(1200);
@@ -693,11 +751,14 @@ var NetDiagnoseView = (function () {
   /** 只复制本机配置：反馈 bug 时用，不带线路检测那一大堆。 */
   function deviceCard(siteName) {
     var card = el('div', 'nd-qq nd-device'), copy = el('div', 'nd-qq-copy', '反馈 bug 时，把本机配置一起发给我们：');
-    copy.appendChild(el('small', '', '只有系统、浏览器、屏幕这些，不含检测结果'));
+    copy.appendChild(el('small', '', '只有机型、系统、浏览器、屏幕这些，不含检测结果'));
     var btn = el('button', 'nd-qq-btn', '复制本机配置');
     btn.type = 'button';
+    // 机型要异步读，先备好文本：iOS 只认点击当下同步发起的复制。
+    var text = '';
+    NetDiagnose.formatDevice(siteName).then(function (t) { text = t; });
     btn.onclick = function () {
-      NetDiagnose.copyText(NetDiagnose.formatDevice(siteName)).then(function (ok) {
+      (text ? NetDiagnose.copyText(text) : NetDiagnose.formatDevice(siteName).then(NetDiagnose.copyText)).then(function (ok) {
         setText(btn, ok ? '已复制' : '复制失败，请截图');
         setTimeout(function () { setText(btn, '复制本机配置'); }, 2500);
       });
@@ -731,6 +792,7 @@ var NetDiagnoseView = (function () {
     root.appendChild(net);
 
     var env = group('设备与浏览器');
+    env.appendChild(row('机型', e.model || '未知'));
     env.appendChild(row('系统', e.os));
     env.appendChild(row('浏览器', e.browser.name + ' ' + e.browser.version));
     env.appendChild(row('内核', e.engine));
