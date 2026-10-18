@@ -482,7 +482,7 @@ var NetDiagnose = (function () {
     if (!env.online) add('bad', '设备显示当前处于离线状态', '检查 Wi-Fi 或移动数据是否打开，飞行模式是否关闭。');
     if (sites.length && siteDown.length === sites.length) {
       add('bad', '所有线路连接失败',
-        '你的网络太垃圾了。如果切换流量 / Wi-Fi 后依旧显示失败，可能是网络被墙限制，请自行寻找梯子。这是你自己的网络问题，和本站无关。禁止向管理员 / 其他用户索要梯子，请自行解决。');
+        '当前网络无法连接所有线路。请切换流量 / Wi-Fi 后重试；如果仍然失败。\n大概率为网络被墙限制，你所在的地区（中国大陆）不支持直连，请自行寻找梯子。这是你自己的网络问题，和本站无关。\n禁止向管理员 / 其他用户索要梯子，请自行解决。');
     } else if (siteDown.length) {
       var usable = filter(sites, function (p) { return p.ok > 0; }).sort(function (a, b) { return a.ms - b.ms; });
       add('warn', '部分线路连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
