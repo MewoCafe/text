@@ -474,18 +474,15 @@ var NetDiagnose = (function () {
     var base = filter(r.probes, function (p) { return p.group !== 'site'; });
     var cn = filter(base, function (p) { return p.group === 'cn'; });
     var sites = filter(r.probes, function (p) { return p.group === 'site'; });
-    var internetOk = filter(base, function (p) { return p.ok > 0; }).length > 0;
     var siteDown = filter(sites, function (p) { return p.ok === 0; });
     var flaky = filter(r.probes, function (p) { return p.ok > 0 && p.ok < p.attempts; });
     var cnMs = median(filter(cn, function (p) { return p.ms !== null; }).map(function (p) { return p.ms; }));
     var slowSites = filter(sites, function (p) { return p.ms !== null && p.ms > SLOW_MS; });
 
     if (!env.online) add('bad', '设备显示当前处于离线状态', '检查 Wi-Fi 或移动数据是否打开，飞行模式是否关闭。');
-    if (base.length && !internetOk && siteDown.length === sites.length) {
-      add('bad', '网络整体不通', '国内外常用网站都连不上，问题在你这边的网络。换个 Wi-Fi 或切到移动数据，关掉代理 / VPN 再试。');
-    } else if (siteDown.length === sites.length) {
-      add('bad', '当前网络无法连接本站服务',
-        '普通网站可以正常访问，但本站所需的多个服务域名均无法连接。这说明问题来自你当前使用的网络、DNS或运营商限制，并非网站故障。请切换 Wi‑Fi/流量后重试。此类网络限制站方无法远程修复，无需反馈。');
+    if (sites.length && siteDown.length === sites.length) {
+      add('bad', '所有线路连接失败',
+        '你的网络太垃圾了。如果切换流量 / Wi-Fi 后依旧显示失败，可能是网络被墙限制，请自行寻找梯子。这是你自己的网络问题，和本站无关。禁止向管理员 / 其他用户索要梯子，请自行解决。');
     } else if (siteDown.length) {
       var usable = filter(sites, function (p) { return p.ok > 0; }).sort(function (a, b) { return a.ms - b.ms; });
       add('warn', '部分线路连不上：' + siteDown.map(function (p) { return p.name; }).join('、'),
