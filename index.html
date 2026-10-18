@@ -115,6 +115,11 @@ body{background:#f3eee7;background:linear-gradient(180deg,var(--nd-bg-top) 0,var
 @media (max-height:640px){.nd-ring{width:64px;height:64px;margin-bottom:10px}.nd-ring::before{top:7px;left:7px;right:7px;bottom:7px}.nd-ring-icon{font-size:24px}.nd-headline{font-size:18px;margin-bottom:4px}.nd-sub{-webkit-line-clamp:4;min-height:0}.nd-chips{margin-top:8px}.nd-more{padding:6px 14px}.nd-tile{padding:10px 12px}}
 @media (max-height:560px){.nd-credit{margin-top:6px}.nd-top{height:28px}.nd-custom-field{height:40px}.nd-ring{width:72px;height:72px;margin-bottom:10px}.nd-ring::before{top:8px;left:8px;right:8px;bottom:8px}.nd-ring-icon{font-size:26px}.nd-sub{-webkit-line-clamp:2;min-height:0}.nd-tile{padding:9px 12px}.nd-btn{min-height:44px}}
 
+/* 完整展示主界面提示；矮屏幕允许滚动，不截断正文。 */
+.nd-app{overflow-y:auto}
+.nd-top{flex-shrink:0}
+.nd-hero{flex-shrink:0;min-height:auto}
+.nd-sub{display:block;overflow:visible;-webkit-line-clamp:unset;white-space:pre-line;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
