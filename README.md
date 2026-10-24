@@ -12,6 +12,8 @@
 - sidebyside.nya.pub
 - sidebyside.8bit.ca
 - sidebyside.mooo.com
+- sidebyside-rouge.vercel.app
+- sidebyside-6a4bf112.netlify.app
 
 ## 许可证
 
